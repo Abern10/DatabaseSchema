@@ -35,7 +35,7 @@ CREATE TABLE Rent(
 CREATE TABLE Address(
     road_name VARCHAR(100),
     number INT,
-    city VARCHAR,
+    city VARCHAR(100),
     PRIMARY KEY (road_name, number, city)
 );
 
