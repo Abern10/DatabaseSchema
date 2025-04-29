@@ -21,7 +21,7 @@ export default function Login() {
     setError('');
 
     try {
-      // In a real app, you would make an API call to your backend
+      // TODO: MAKE API CALL TO BACKEND
       let endpoint = '';
       let payload = {};
 
@@ -40,10 +40,10 @@ export default function Login() {
           break;
       }
 
-      // Simulating API call
+      // TODO: Simulating API call
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Simulating successful login
+      // TODO: Simulating successful login
       const userData = {
         role,
         ...(role === 'client' && { email: identifier, name: 'John Doe' }),

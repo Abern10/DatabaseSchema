@@ -180,7 +180,7 @@ export default function DriversPage() {
     setSuccess('');
     
     try {
-      // In a real app, you would make an API call to your backend
+      // TODO: In a real app, you would make an API call to your backend
       // const response = await fetch('/api/managers/drivers', {
       //   method: 'POST',
       //   headers: {
@@ -233,12 +233,12 @@ export default function DriversPage() {
     }
     
     try {
-      // In a real app, you would make an API call to your backend
+      // TODO: In a real app, you would make an API call to your backend
       // const response = await fetch(`/api/managers/drivers/${name}`, {
       //   method: 'DELETE'
       // });
       
-      // Simulating API call
+      // TODO: Simulating API call
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Update local state

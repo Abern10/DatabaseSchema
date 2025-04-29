@@ -49,7 +49,8 @@ export default function ManagerDashboard() {
   const [cityClients, setCityClients] = useState<any[]>([]);
 
   useEffect(() => {
-    // In a real app, you would fetch this from an API
+      // TODO: fetch this from an API
+  
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       const userData = JSON.parse(storedUser);
@@ -60,7 +61,7 @@ export default function ManagerDashboard() {
         return;
       }
       
-      // Simulating fetching dashboard data
+      // TODO: Simulating fetching dashboard data
       setTimeout(() => {
         setStats({
           totalRents: 156,
@@ -106,7 +107,7 @@ export default function ManagerDashboard() {
   const handleCitySelect = (city1: string, city2: string) => {
     setCityFilter(`${city1} to ${city2}`);
     
-    // Simulating API call to fetch clients who have address in city1 and booked a ride with driver from city2
+    // TODO: Simulating API call to fetch clients who have address in city1 and booked a ride with driver from city2
     setTimeout(() => {
       setCityClients([
         { name: 'David Miller', email: 'david@example.com' },
@@ -119,7 +120,7 @@ export default function ManagerDashboard() {
   const fetchTopClients = (k: number) => {
     setTopK(k);
     
-    // Simulating API call
+    // TODO: Simulating API call
     setTimeout(() => {
       // In a real app, you would fetch the top k clients from your API
       const allClients = [

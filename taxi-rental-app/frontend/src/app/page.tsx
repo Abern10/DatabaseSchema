@@ -30,13 +30,13 @@ export default function Home() {
   });
 
   useEffect(() => {
-    // In a real app, you would fetch this data from your API
+    // TODO: In a real app, you would fetch this data from your API
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
     
-    // Simulate fetching stats
+    // TODO: Simulate fetching stats
     setTimeout(() => {
       setStats({
         totalRents: 123,

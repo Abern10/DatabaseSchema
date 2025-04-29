@@ -41,13 +41,13 @@ export default function BookRent() {
   const [selectedCreditCard, setSelectedCreditCard] = useState<CreditCard | null>(null);
   
   useEffect(() => {
-    // In a real app, you would fetch this from an API
+    // TODO: In a real app, you would fetch this from an API
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       const userData = JSON.parse(storedUser);
       setUser(userData);
       
-      // Simulating fetching client data
+      // TODO: Simulating fetching client data
       setTimeout(() => {
         setAddresses([
           { road_name: 'Main St', number: '123', city: 'New York' },
@@ -81,11 +81,11 @@ export default function BookRent() {
     setSelectedModel(null);
     
     try {
-      // In a real app, you would fetch this from your API
+      // TODO: In a real app, you would fetch this from your API
       // const response = await fetch(`/api/clients/available-models?date=${date}`);
       // const data = await response.json();
       
-      // Simulating API response
+      // TODO: Simulating API response
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       const mockData = [
@@ -136,7 +136,7 @@ export default function BookRent() {
     setSuccess('');
     
     try {
-      // In a real app, you would make an API call to your backend
+      // TODO: In a real app, you would make an API call to your backend
       // const response = await fetch('/api/clients/rents', {
       //   method: 'POST',
       //   headers: {

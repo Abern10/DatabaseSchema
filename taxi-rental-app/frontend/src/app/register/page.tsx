@@ -84,7 +84,7 @@ export default function Register() {
     setError('');
 
     try {
-      // In a real app, you would make an API call to your backend
+      // TODO: In a real app, you would make an API call to your backend
       let endpoint = '';
       let payload = {};
 
@@ -108,10 +108,10 @@ export default function Register() {
           break;
       }
 
-      // Simulating API call
+      // TODO: Simulating API call
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Simulating successful registration
+      // TODO: Simulating successful registration
       const userData = {
         role,
         ...(role === 'client' && { email, name }),
