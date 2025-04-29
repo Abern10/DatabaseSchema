@@ -1,8 +1,9 @@
 // frontend/src/app/layout.tsx
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import './globals.css';
+import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import Sidebar from '@/components/layout/Sidebar';
+import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -19,12 +20,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <div className="flex h-screen">
-          <Sidebar />
-          <main className="flex-1 overflow-auto bg-gray-100 p-4">
-            {children}
-          </main>
-        </div>
+        <ThemeProvider>
+          <div className="flex h-screen">
+            <Sidebar />
+            <main className="flex-1 overflow-auto bg-gray-100 p-4">
+              {children}
+            </main>
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   );

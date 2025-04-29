@@ -1,12 +1,10 @@
-/* frontend/src/app/globals.css */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
+/* Base styles */
 :root {
   --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  --background-start-rgb: 248, 250, 252;
+  --background-end-rgb: 241, 245, 249;
 }
 
 body {
@@ -19,8 +17,16 @@ body {
     rgb(var(--background-start-rgb));
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+/* Custom component classes */
+@layer components {
+  /* Buttons */
+  .btn-primary {
+    @apply rounded-md font-medium transition-colors duration-200 p-2 bg-blue-600 text-white hover:bg-blue-700;
   }
+  
+  .btn-secondary {
+    @apply rounded-md font-medium transition-colors duration-200 p-2 bg-gray-200 text-gray-800 hover:bg-gray-300;
+  }
+  
+  /* Add other component classes as needed */
 }
