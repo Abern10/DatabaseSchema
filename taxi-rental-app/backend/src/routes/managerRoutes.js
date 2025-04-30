@@ -1,53 +1,55 @@
-// backend/server.js
-const express = require('express');
-const cors = require('cors');
-const { Pool } = require('pg');
-require('dotenv').config();
+//idk why server code was in here but i commented it out
 
-// Routes
-const managerRoutes = require('./src/routes/managerRoutes');
-const driverRoutes = require('./src/routes/driverRoutes');
-const clientRoutes = require('./src/routes/clientRoutes');
-const carRoutes = require('./src/routes/carRoutes');
-const rentRoutes = require('./src/routes/rentRoutes');
+// // backend/server.js
+// const express = require('express');
+// const cors = require('cors');
+// const { Pool } = require('pg');
+// require('dotenv').config();
 
-// Initialize app
-const app = express();
-const PORT = process.env.PORT || 5000;
+// // Routes
+// const managerRoutes = require('./src/routes/managerRoutes');
+// const driverRoutes = require('./src/routes/driverRoutes');
+// const clientRoutes = require('./src/routes/clientRoutes');
+// const carRoutes = require('./src/routes/carRoutes');
+// const rentRoutes = require('./src/routes/rentRoutes');
 
-// Database connection
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT,
-});
+// // Initialize app
+// const app = express();
+// const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// // Database connection
+// const pool = new Pool({
+//   user: process.env.DB_USER,
+//   host: process.env.DB_HOST,
+//   database: process.env.DB_NAME,
+//   password: process.env.DB_PASSWORD,
+//   port: process.env.DB_PORT,
+// });
 
-// Make the database connection available to routes
-app.use((req, res, next) => {
-  req.db = pool;
-  next();
-});
+// // Middleware
+// app.use(cors());
+// app.use(express.json());
 
-// Routes
-app.use('/api/managers', managerRoutes);
-app.use('/api/drivers', driverRoutes);
-app.use('/api/clients', clientRoutes);
-app.use('/api/cars', carRoutes);
-app.use('/api/rents', rentRoutes);
+// // Make the database connection available to routes
+// app.use((req, res, next) => {
+//   req.db = pool;
+//   next();
+// });
 
-// Error handling
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
-});
+// // Routes
+// app.use('/api/managers', managerRoutes);
+// app.use('/api/drivers', driverRoutes);
+// app.use('/api/clients', clientRoutes);
+// app.use('/api/cars', carRoutes);
+// app.use('/api/rents', rentRoutes);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// // Error handling
+// app.use((err, req, res, next) => {
+//   console.error(err.stack);
+//   res.status(500).json({ error: 'Something went wrong!' });
+// });
+
+// // Start server
+// app.listen(PORT, () => {
+//   console.log(`Server running on port ${PORT}`);
+// });

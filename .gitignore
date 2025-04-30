@@ -43,7 +43,7 @@ next-env.d.ts
 *.dump
 *.backup
 *.bak
-*.sql
+
 
 # Turbo
 .turbo

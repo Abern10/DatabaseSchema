@@ -1,8 +1,7 @@
-// backend/server.js
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
-require('dotenv').config();
+require('dotenv').config();  // Load environment variables
 
 // Routes
 const managerRoutes = require('./src/routes/managerRoutes');
@@ -11,37 +10,48 @@ const clientRoutes = require('./src/routes/clientRoutes');
 const carRoutes = require('./src/routes/carRoutes');
 const rentRoutes = require('./src/routes/rentRoutes');
 
-// Initialize app
-const app = express();
-const PORT = process.env.PORT || 5000;
+// Database connection configuration using environment variables
+const dbConfig = {
+  user: process.env.DB_USER,         // replace with your DB username in a .env file
+  password: process.env.DB_PASSWORD, // replace with your DB password in a .env file
+  host: process.env.DB_HOST,         // replace with your DB host in a .env file
+  port: process.env.DB_PORT,         // replace with your DB port in a .env file
+  database: process.env.DB_DATABASE  // replace with your DB name in a .env file
+};
 
-// Database connection
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT,
-});
+// Initialize PostgreSQL connection pool
+const pool = new Pool(dbConfig);
+
+// Test the database connection
+pool.connect()
+  .then(() => console.log('Connected to PostgreSQL'))
+  .catch((err) => {
+    console.error('Database connection error:', err.stack);
+    process.exit(1); // Stop the server if DB connection fails
+  });
+
+// Initialize Express app
+const app = express();
+const PORT = 5000;
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+app.use(cors());              // Allow requests from other origins (like frontend)
+app.use(express.json());      // Parse incoming JSON request bodies
 
-// Make the database connection available to routes
+// Make `pool` available in all routes
 app.use((req, res, next) => {
   req.db = pool;
   next();
 });
 
-// Routes
+// Mount routes
 app.use('/api/managers', managerRoutes);
 app.use('/api/drivers', driverRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/cars', carRoutes);
 app.use('/api/rents', rentRoutes);
 
-// Error handling
+// Global error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
@@ -49,5 +59,5 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
