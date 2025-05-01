@@ -86,13 +86,18 @@ export default function AddReview() {
       return;
     }
     
+    if (!driver?.name) {
+      setError('Driver information is missing');
+      return;
+    }
+    
     setSubmitting(true);
     setError('');
     
     try {
       // Submit the review using our API function
       const reviewData = {
-        driver_name: driver?.name,
+        driver_name: driver.name, // This is now guaranteed to be non-null
         rating,
         message,
         client_email: user.email,
