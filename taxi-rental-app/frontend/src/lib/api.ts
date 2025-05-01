@@ -42,7 +42,7 @@ const handleResponse = async (response: Response): Promise<ApiResponse<any>> => 
       success: false,
       error: data.error || `Request failed with status ${response.status}`
     };
-  } 
+  }
   
   return {
     success: true,
@@ -83,7 +83,64 @@ export async function login(credentials: LoginCredentials): Promise<ApiResponse<
 // Client registration
 export async function registerClient(data: RegisterData): Promise<ApiResponse<any>> {
   try {
-    const response = await fetch(`${API_URL}/clients/register`, {
+    // Determine endpoint based on userType
+    let endpoint = '';
+    
+    switch (data.userType) {
+      case 'client':
+        endpoint = '/clients/register';
+        break;
+      case 'driver':
+        endpoint = '/drivers/register';
+        break;
+      case 'manager':
+        endpoint = '/managers/register';
+        break;
+      default:
+        throw new Error('Invalid user type');
+    }
+    
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    
+    return handleResponse(response);
+  } catch (error) {
+    return {
+      success: false,
+      error: 'Network error, please try again later.',
+    };
+  }
+}
+
+// Register driver specifically
+export async function registerDriver(data: Omit<RegisterData, 'userType'>): Promise<ApiResponse<any>> {
+  try {
+    const response = await fetch(`${API_URL}/drivers/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    
+    return handleResponse(response);
+  } catch (error) {
+    return {
+      success: false,
+      error: 'Network error, please try again later.',
+    };
+  }
+}
+
+// Register manager specifically
+export async function registerManager(data: Omit<RegisterData, 'userType'>): Promise<ApiResponse<any>> {
+  try {
+    const response = await fetch(`${API_URL}/managers/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

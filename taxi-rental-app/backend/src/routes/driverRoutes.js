@@ -2,6 +2,70 @@
 const express = require('express');
 const router = express.Router();
 
+// Register a new driver
+router.post('/register', async (req, res) => {
+  const { name, email, address } = req.body;
+  
+  try {
+    // Start a transaction
+    await req.db.query('BEGIN');
+    
+    // First, check if the address exists or create it
+    let addressId;
+    
+    if (address) {
+      const { road_name, number, city } = address;
+      
+      // Check if address already exists
+      const addressCheck = await req.db.query(
+        'SELECT address_id FROM Address WHERE road_name = $1 AND number = $2 AND city = $3',
+        [road_name, number, city]
+      );
+      
+      if (addressCheck.rows.length > 0) {
+        addressId = addressCheck.rows[0].address_id;
+      } else {
+        // Insert the address
+        const addressResult = await req.db.query(
+          'INSERT INTO Address (road_name, number, city) VALUES ($1, $2, $3) RETURNING address_id',
+          [road_name, number, city]
+        );
+        
+        addressId = addressResult.rows[0].address_id;
+      }
+    } else {
+      // If no address provided, insert a default address
+      const defaultAddressResult = await req.db.query(
+        'INSERT INTO Address (road_name, number, city) VALUES ($1, $2, $3) RETURNING address_id',
+        ['Default Road', 1, 'Default City']
+      );
+      
+      addressId = defaultAddressResult.rows[0].address_id;
+    }
+    
+    // Insert the driver
+    const result = await req.db.query(
+      'INSERT INTO Driver (name, address_id) VALUES ($1, $2) RETURNING *',
+      [name, addressId]
+    );
+    
+    // Commit the transaction
+    await req.db.query('COMMIT');
+    
+    res.status(201).json({ 
+      success: true, 
+      message: 'Driver registered successfully',
+      data: result.rows[0]
+    });
+  } catch (error) {
+    // Rollback in case of error
+    await req.db.query('ROLLBACK');
+    
+    console.error('Error registering driver:', error);
+    res.status(400).json({ error: 'Failed to register driver' });
+  }
+});
+
 // Login driver
 router.post('/login', async (req, res) => {
   const { name } = req.body;
@@ -130,23 +194,6 @@ router.delete('/:name/drivable-models/:brand/:carid/:modelid', async (req, res) 
   } catch (error) {
     console.error('Error removing drivable model:', error);
     res.status(500).json({ error: 'Failed to remove drivable model' });
-  }
-});
-
-// Get all car models
-router.get('/car-models', async (req, res) => {
-  try {
-    const result = await req.db.query(
-      `SELECT m.brand, m.carid, m.modelid, m.color, 
-              m.construction_year, m.transmission_type 
-       FROM Model m 
-       ORDER BY m.brand, m.carid, m.modelid`
-    );
-    
-    res.status(200).json(result.rows);
-  } catch (error) {
-    console.error('Error getting car models:', error);
-    res.status(500).json({ error: 'Failed to get car models' });
   }
 });
 

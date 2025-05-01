@@ -3,7 +3,7 @@
 
 import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { registerClient, RegisterData } from '@/lib/api';
+import { registerClient, registerDriver, registerManager, RegisterData } from '@/lib/api';
 
 type UserType = 'client' | 'manager' | 'driver';
 
@@ -256,67 +256,71 @@ export default function RegisterForm({ onSuccessRedirect }: RegisterFormProps) {
     setLoading(true);
     setError('');
 
-    // Convert null values to 0 for API submission
-    const processedAddresses = addresses.map(addr => ({
-      ...addr,
-      number: addr.number ?? 0
-    }));
-
-    const processedCreditCards = creditCards.map(card => ({
-      card_number: card.card_number,
-      payment_address: {
-        ...card.payment_address,
-        number: card.payment_address.number ?? 0
-      }
-    }));
-
-    const registerData: RegisterData = {
-      name,
-      email,
-      userType,
-    };
-
-    if (userType === 'manager') {
-      registerData.ssn = ssn;
-    }
-
-    if (userType === 'client') {
-      registerData.addresses = processedAddresses;
-      registerData.creditCards = processedCreditCards;
-    }
-
     try {
-      const response = await registerClient(registerData);
+      let response;
 
-      if (response.success) {
-        // Store user in localStorage (important for dashboard authorization)
-        localStorage.setItem('user', JSON.stringify({
-          name,
-          email,
-          userType
+      if (userType === 'client') {
+        // Convert null values to 0 for API submission
+        const processedAddresses = addresses.map(addr => ({
+          ...addr,
+          number: addr.number ?? 0
         }));
 
-        // Redirect based on user type
-        switch (userType) {
-          case 'client':
-            router.push('/client/dashboard');
-            break;
-          case 'manager':
-            router.push('/manager/dashboard');
-            break;
-          case 'driver':
-            router.push('/driver/dashboard');
-            break;
-          default:
-            router.push(onSuccessRedirect || '/');
-        }
+        const processedCreditCards = creditCards.map(card => ({
+          card_number: card.card_number,
+          payment_address: {
+            ...card.payment_address,
+            number: card.payment_address.number ?? 0
+          }
+        }));
+
+        // Register client
+        const clientData = {
+          name,
+          email,
+          addresses: processedAddresses,
+          creditCards: processedCreditCards
+        };
+
+        response = await registerClient({
+          ...clientData,
+          userType: 'client'
+        });
+      } else if (userType === 'driver') {
+        // Register driver - only needs basic info and optionally an address
+        const driverData = {
+          name,
+          email,
+          address: addresses[0] ? {
+            ...addresses[0],
+            number: addresses[0].number ?? 0
+          } : undefined
+        };
+
+        response = await registerDriver(driverData);
+      } else {
+        // Register manager
+        const managerData = {
+          name,
+          email,
+          ssn
+        };
+
+        response = await registerManager(managerData);
+      }
+
+      if (response.success) {
+        router.push(userType === 'client'
+          ? '/client/dashboard'
+          : userType === 'driver'
+            ? '/driver/dashboard'
+            : '/manager/dashboard');
       } else {
         setError(response.error || 'Registration failed');
       }
-
-
     } catch (err) {
       setError('An unexpected error occurred');
+      console.error('Registration error:', err);
     } finally {
       setLoading(false);
     }
