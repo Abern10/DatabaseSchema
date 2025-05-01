@@ -16,9 +16,9 @@ type CarModel = {
 
 type CreditCard = {
   card_number: string;
-  address_road_name: string;
-  address_number: number;
-  address_city: string;
+  road_name: string;
+  number: number;
+  city: string;
 };
 
 export default function BookRent() {
@@ -27,49 +27,74 @@ export default function BookRent() {
   
   const [availableModels, setAvailableModels] = useState<CarModel[]>([]);
   const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
-  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<{brand: string, carid: number, modelid: number} | null>(null);
   const [selectedCard, setSelectedCard] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [loadingModels, setLoadingModels] = useState(false);
-  const [loadingCards, setLoadingCards] = useState(true);
+  const [loadingCards, setLoadingCards] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [user, setUser] = useState<any>(null);
+  
+  // Get min date (today) for the date picker
+  const today = new Date();
+  const minDate = today.toISOString().split('T')[0];
   
   useEffect(() => {
     // Get user info from localStorage
     const userData = localStorage.getItem('user');
     if (userData) {
-      setUser(JSON.parse(userData));
+      const parsedUser = JSON.parse(userData);
+      setUser(parsedUser);
       
-      // Load credit cards
-      loadCreditCards(JSON.parse(userData).email);
+      // Load credit cards immediately
+      loadCreditCards(parsedUser.email);
+      
+      // Set default date to today
+      if (!selectedDate) {
+        handleDateChange(minDate);
+      }
     } else {
-      router.push('/'); // Redirect to login if not logged in
+      setError('User not found. Please log in again.');
+      setTimeout(() => router.push('/'), 2000);
+      return;
     }
     
     // Check for model ID in query params
-    const initModelFromQuery = searchParams.get('model');
-    if (initModelFromQuery) {
-      // We'll set the selected model after loading available models
-      const modelId = parseInt(initModelFromQuery);
+    const modelIdParam = searchParams.get('model');
+    if (modelIdParam && !isNaN(Number(modelIdParam))) {
+      // We'll preselect this model after loading available models
+      const preselectedModelId = parseInt(modelIdParam);
+      if (!selectedDate) {
+        // If no date is set, set it to today and the models will load
+        handleDateChange(minDate);
+      }
     }
-  }, [searchParams, router]);
+  }, [router, searchParams, minDate]);
 
   const loadCreditCards = async (email: string) => {
     setLoadingCards(true);
+    setError('');
+    
     try {
       const response = await getClientCreditCards(email);
-      if (response.success) {
-        setCreditCards(response.data || []);
+      
+      if (response.success && response.data) {
+        setCreditCards(response.data);
+        
+        // Auto-select the first card if available and none is selected
+        if (response.data.length > 0 && !selectedCard) {
+          setSelectedCard(response.data[0].card_number);
+        }
       } else {
         console.error('Failed to load credit cards:', response.error);
-        setError(`Failed to load credit cards: ${response.error}`);
+        setError(`Failed to load payment methods: ${response.error || 'Unknown error'}`);
       }
     } catch (err) {
       console.error('Error loading credit cards:', err);
-      setError('An unexpected error occurred while loading credit cards.');
+      setError('An unexpected error occurred while loading payment methods.');
     } finally {
       setLoadingCards(false);
     }
@@ -82,54 +107,82 @@ export default function BookRent() {
     if (date) {
       setLoadingModels(true);
       setError('');
+      setSuccessMessage('');
       
       try {
         const response = await getAvailableModels(date);
-        if (response.success) {
+        
+        if (response.success && response.data) {
           setAvailableModels(response.data || []);
           
           // Check if we need to preselect a model from query params
           const modelIdParam = searchParams.get('model');
-          if (modelIdParam) {
+          if (modelIdParam && !isNaN(Number(modelIdParam))) {
             const modelId = parseInt(modelIdParam);
-            const foundModel = response.data?.find((m: any) => m.modelid === modelId);
+            const foundModel = response.data.find((m: CarModel) => m.modelid === modelId);
+            
             if (foundModel) {
               setSelectedModel({
                 brand: foundModel.brand,
                 carid: foundModel.carid,
                 modelid: foundModel.modelid
               });
+            } else {
+              // If the requested model is not available on the selected date
+              setError(`The requested car model is not available on ${date}. Please select another date or model.`);
             }
           }
         } else {
-          setError('Failed to load available models. ' + (response.error || ''));
+          setError('Failed to load available models: ' + (response.error || 'Unknown error'));
           setAvailableModels([]);
         }
       } catch (err) {
         console.error('Error loading available models:', err);
         setError('An unexpected error occurred while loading available models.');
+        setAvailableModels([]);
       } finally {
         setLoadingModels(false);
       }
+    } else {
+      // Clear models if no date is selected
+      setAvailableModels([]);
+      setSelectedModel(null);
     }
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     
-    if (!selectedDate || !selectedModel || !selectedCard) {
-      setError('Please select all required fields');
+    if (!selectedDate) {
+      setError('Please select a date for your rent');
+      return;
+    }
+    
+    if (!selectedModel) {
+      setError('Please select a car model');
+      return;
+    }
+    
+    if (!selectedCard) {
+      setError('Please select a payment method');
+      return;
+    }
+    
+    if (!user?.email) {
+      setError('User information not found. Please log in again.');
+      setTimeout(() => router.push('/'), 2000);
       return;
     }
     
     setSubmitting(true);
     setError('');
+    setSuccessMessage('');
     
     try {
-      // Find the selected card's payment address
+      // Find the selected card
       const card = creditCards.find(c => c.card_number === selectedCard);
       if (!card) {
-        throw new Error('Selected card not found');
+        throw new Error('Selected payment method not found');
       }
       
       // Prepare rent data
@@ -140,18 +193,23 @@ export default function BookRent() {
         carid: selectedModel.carid,
         modelid: selectedModel.modelid,
         card_number: selectedCard,
-        address_road_name: card.address_road_name,
-        address_number: card.address_number,
-        address_city: card.address_city
+        address_road_name: card.road_name,
+        address_number: card.number,
+        address_city: card.city
       };
       
       const response = await bookRent(rentData);
       
       if (response.success) {
-        // Redirect to the rents page after successful booking
-        router.push('/client/rents');
+        setSuccessMessage('Your rent has been successfully booked!');
+        
+        // Clear the form
+        setSelectedModel(null);
+        
+        // Wait a moment and then redirect to the rents page
+        setTimeout(() => router.push('/client/rents'), 2000);
       } else {
-        setError(response.error || 'Failed to book rent');
+        setError(response.error || 'Failed to book rent. Please try again.');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to book rent. Please try again.');
@@ -160,9 +218,17 @@ export default function BookRent() {
     }
   };
 
-  // Get min date (today) for the date picker
-  const today = new Date();
-  const minDate = today.toISOString().split('T')[0];
+  const retryLoadingCards = () => {
+    if (user?.email) {
+      loadCreditCards(user.email);
+    }
+  };
+
+  const retryLoadingModels = () => {
+    if (selectedDate) {
+      handleDateChange(selectedDate);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-md p-6">
@@ -171,6 +237,12 @@ export default function BookRent() {
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
           {error}
+        </div>
+      )}
+      
+      {successMessage && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
+          {successMessage}
         </div>
       )}
       
@@ -189,6 +261,9 @@ export default function BookRent() {
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             required
           />
+          <p className="mt-1 text-sm text-gray-500">
+            Select a date to see available car models.
+          </p>
         </div>
         
         {/* Car Model Selection */}
@@ -198,17 +273,25 @@ export default function BookRent() {
           </label>
           
           {loadingModels ? (
-            <div className="flex justify-center items-center p-6">
+            <div className="flex justify-center items-center p-6 bg-gray-50 rounded-lg">
               <div className="w-8 h-8 border-t-4 border-indigo-500 border-solid rounded-full animate-spin"></div>
               <p className="ml-2 text-gray-600">Loading available models...</p>
             </div>
-          ) : availableModels.length === 0 ? (
+          ) : selectedDate && availableModels.length === 0 ? (
             <div className="bg-gray-50 p-6 rounded-lg text-center">
-              {selectedDate ? (
-                <p className="text-gray-500">No available car models found for this date.</p>
-              ) : (
-                <p className="text-gray-500">Please select a date to see available car models.</p>
-              )}
+              <p className="text-gray-500 mb-2">No available car models found for {selectedDate}.</p>
+              <p className="text-sm text-gray-500">Try selecting a different date.</p>
+              <button
+                type="button"
+                onClick={retryLoadingModels}
+                className="mt-3 text-indigo-600 hover:text-indigo-800 font-medium"
+              >
+                Refresh
+              </button>
+            </div>
+          ) : !selectedDate ? (
+            <div className="bg-gray-50 p-6 rounded-lg text-center">
+              <p className="text-gray-500">Please select a date to see available car models.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -248,13 +331,29 @@ export default function BookRent() {
           </label>
           
           {loadingCards ? (
-            <div className="flex justify-center items-center p-6">
+            <div className="flex justify-center items-center p-6 bg-gray-50 rounded-lg">
               <div className="w-8 h-8 border-t-4 border-indigo-500 border-solid rounded-full animate-spin"></div>
               <p className="ml-2 text-gray-600">Loading payment methods...</p>
             </div>
           ) : creditCards.length === 0 ? (
             <div className="bg-gray-50 p-6 rounded-lg text-center">
-              <p className="text-gray-500">No payment methods found. Please add a credit card in your profile.</p>
+              <p className="text-gray-500 mb-3">No payment methods found.</p>
+              <div className="flex justify-center space-x-4">
+                <button
+                  type="button"
+                  onClick={retryLoadingCards}
+                  className="text-indigo-600 hover:text-indigo-800 font-medium"
+                >
+                  Refresh
+                </button>
+                <span className="text-gray-400">|</span>
+                <a 
+                  href="/client/profile" 
+                  className="text-indigo-600 hover:text-indigo-800 font-medium"
+                >
+                  Add a credit card
+                </a>
+              </div>
             </div>
           ) : (
             <div className="space-y-3">
@@ -272,7 +371,7 @@ export default function BookRent() {
                     <div>
                       <p className="font-semibold text-gray-800">{card.card_number}</p>
                       <p className="text-sm text-gray-600">
-                        {card.address_road_name} {card.address_number}, {card.address_city}
+                        {card.road_name} {card.number}, {card.city}
                       </p>
                     </div>
                     <div className="flex items-center">
