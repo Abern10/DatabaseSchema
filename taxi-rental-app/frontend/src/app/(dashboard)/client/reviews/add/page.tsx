@@ -4,6 +4,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { submitReview } from '@/lib/api';
 
 type Driver = {
   id: number;
@@ -28,40 +29,44 @@ export default function AddReview() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [user, setUser] = useState<any>(null);
   
   useEffect(() => {
-    const driverId = searchParams.get('driver');
+    // Get user data from localStorage
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    } else {
+      setError('User not found. Please log in again.');
+      setTimeout(() => router.push('/'), 2000);
+      return;
+    }
+    
+    const driverName = searchParams.get('driver');
     const rentId = searchParams.get('rent');
     
-    if (!driverId || !rentId) {
+    if (!driverName || !rentId) {
       setError('Missing driver or rent information');
       setLoading(false);
       return;
     }
     
-    // In a real app, fetch this data from your API
-    const fetchData = async () => {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Mock data
-      setDriver({
-        id: parseInt(driverId),
-        name: 'John Smith' // This would come from your API
-      });
-      
-      setRent({
-        id: parseInt(rentId),
-        date: '2025-04-15',
-        brand: 'Toyota',
-        color: 'Silver'
-      });
-      
-      setLoading(false);
-    };
+    // Fetch rent details from backend in a real application
+    // For now we'll use the data we have
+    setDriver({
+      id: 0, // We don't need the actual ID as we'll use the name
+      name: driverName
+    });
     
-    fetchData();
-  }, [searchParams]);
+    setRent({
+      id: parseInt(rentId),
+      date: new Date().toISOString().split('T')[0], // Using current date as a fallback
+      brand: 'Car', // These will be populated from the API in a real implementation
+      color: '' 
+    });
+    
+    setLoading(false);
+  }, [searchParams, router]);
 
   const handleRatingChange = (newRating: number) => {
     setRating(newRating);
@@ -75,29 +80,35 @@ export default function AddReview() {
       return;
     }
     
+    if (!user?.email) {
+      setError('User information not found. Please log in again.');
+      setTimeout(() => router.push('/'), 2000);
+      return;
+    }
+    
     setSubmitting(true);
     setError('');
     
     try {
-      // Here you would make an API call to submit the review
-      // For example:
-      // const response = await fetch('/api/reviews', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     driver_id: driver?.id,
-      //     rent_id: rent?.id,
-      //     rating,
-      //     message
-      //   })
-      // });
+      // Submit the review using our API function
+      const reviewData = {
+        driver_name: driver?.name,
+        rating,
+        message,
+        client_email: user.email,
+        rent_id: rent?.id
+      };
       
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await submitReview(reviewData);
       
-      // Redirect to the reviews page after successful submission
-      router.push('/client/reviews');
+      if (response.success) {
+        // Redirect to reviews page on success
+        router.push('/client/reviews');
+      } else {
+        setError(response.error || 'Failed to submit review. Please try again.');
+      }
     } catch (err) {
+      console.error('Error submitting review:', err);
       setError('Failed to submit review. Please try again.');
     } finally {
       setSubmitting(false);
@@ -141,8 +152,10 @@ export default function AddReview() {
       <div className="bg-gray-50 p-5 rounded-lg mb-6 border border-gray-200">
         <h3 className="font-medium text-gray-700">Trip Details</h3>
         <p className="text-sm text-gray-600 mt-2">Driver: {driver?.name}</p>
-        <p className="text-sm text-gray-600">Date: {rent?.date}</p>
-        <p className="text-sm text-gray-600">Car: {rent?.brand} ({rent?.color})</p>
+        <p className="text-sm text-gray-600">Rent ID: {rent?.id}</p>
+        {rent?.brand && rent?.color && (
+          <p className="text-sm text-gray-600">Car: {rent.brand} ({rent.color})</p>
+        )}
       </div>
       
       <form onSubmit={handleSubmit} className="space-y-6">

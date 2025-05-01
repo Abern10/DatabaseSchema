@@ -2,42 +2,39 @@
 'use client';
 
 import { useState, useEffect, FormEvent } from 'react';
-import Link from 'next/link';
+import { getClientAddresses, getClientCreditCards, addClientAddress, removeClientAddress, addClientCreditCard, removeClientCreditCard } from '@/lib/api';
 
 type Address = {
-  id: number;
   road_name: string;
   number: number;
   city: string;
 };
 
 type CreditCard = {
-  id: number;
   card_number: string;
-  payment_address: {
-    road_name: string;
-    number: number;
-    city: string;
-  };
-};
-
-type ClientProfile = {
-  name: string;
-  email: string;
-  addresses: Address[];
-  creditCards: CreditCard[];
+  road_name: string;
+  number: number;
+  city: string;
 };
 
 export default function ClientProfile() {
-  const [profile, setProfile] = useState<ClientProfile | null>(null);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [creditCards, setCreditCards] = useState<CreditCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
+
+  // UI states
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [showAddCard, setShowAddCard] = useState(false);
-  const [newAddress, setNewAddress] = useState<Omit<Address, 'id'>>({
+  
+  // Form states
+  const [newAddress, setNewAddress] = useState<Address>({
     road_name: '',
     number: 0,
     city: ''
   });
+  
   const [newCard, setNewCard] = useState({
     card_number: '',
     payment_address: {
@@ -46,66 +43,34 @@ export default function ClientProfile() {
       city: ''
     }
   });
+  
   const [useExistingAddress, setUseExistingAddress] = useState(false);
   const [selectedAddressIndex, setSelectedAddressIndex] = useState(0);
+  
+  // Form submission states
+  const [submittingAddress, setSubmittingAddress] = useState(false);
+  const [submittingCard, setSubmittingCard] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    // In a real app, fetch this data from your API
-    const fetchProfile = async () => {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+    // Get user data from localStorage
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const parsedUser = JSON.parse(userData);
+      setUser(parsedUser);
       
-      // Mock data
-      const mockProfile: ClientProfile = {
-        name: 'Alice Johnson',
-        email: 'alice.johnson@example.com',
-        addresses: [
-          {
-            id: 1,
-            road_name: 'Main St',
-            number: 123,
-            city: 'New York'
-          },
-          {
-            id: 2,
-            road_name: 'Park Ave',
-            number: 456,
-            city: 'Los Angeles'
-          }
-        ],
-        creditCards: [
-          {
-            id: 1,
-            card_number: '**** **** **** 1234',
-            payment_address: {
-              road_name: 'Main St',
-              number: 123,
-              city: 'New York'
-            }
-          },
-          {
-            id: 2,
-            card_number: '**** **** **** 5678',
-            payment_address: {
-              road_name: 'Park Ave',
-              number: 456,
-              city: 'Los Angeles'
-            }
-          }
-        ]
-      };
-      
-      setProfile(mockProfile);
+      // Load user's addresses and credit cards
+      loadUserData(parsedUser.email);
+    } else {
       setLoading(false);
-    };
-    
-    fetchProfile();
+      setError("User not found. Please log in again.");
+    }
   }, []);
 
   // Copy address data when using existing address
   useEffect(() => {
-    if (useExistingAddress && profile?.addresses && profile.addresses.length > 0) {
-      const selectedAddress = profile.addresses[selectedAddressIndex];
+    if (useExistingAddress && addresses && addresses.length > 0) {
+      const selectedAddress = addresses[selectedAddressIndex];
       setNewCard({
         ...newCard,
         payment_address: {
@@ -115,108 +80,205 @@ export default function ClientProfile() {
         }
       });
     }
-  }, [useExistingAddress, selectedAddressIndex, profile?.addresses]);
+  }, [useExistingAddress, selectedAddressIndex, addresses]);
+
+  const loadUserData = async (email: string) => {
+    try {
+      setLoading(true);
+      
+      // Get addresses
+      const addressesResponse = await getClientAddresses(email);
+      if (addressesResponse.success && addressesResponse.data) {
+        setAddresses(addressesResponse.data);
+      } else {
+        console.error('Failed to load addresses:', addressesResponse.error);
+      }
+      
+      // Get credit cards
+      const cardsResponse = await getClientCreditCards(email);
+      if (cardsResponse.success && cardsResponse.data) {
+        setCreditCards(cardsResponse.data);
+      } else {
+        console.error('Failed to load credit cards:', cardsResponse.error);
+      }
+      
+    } catch (err) {
+      console.error('Error loading profile data:', err);
+      setError('Failed to load profile data. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const validateAddressForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    if (!newAddress.road_name.trim()) {
+      errors.road_name = 'Road name is required';
+    }
+    
+    if (!newAddress.number || newAddress.number <= 0) {
+      errors.number = 'Valid number is required';
+    }
+    
+    if (!newAddress.city.trim()) {
+      errors.city = 'City is required';
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const validateCardForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    if (!newCard.card_number.trim()) {
+      errors.card_number = 'Card number is required';
+    } else if (!/^\d{16}$/.test(newCard.card_number.replace(/\s/g, ''))) {
+      errors.card_number = 'Card number must be 16 digits';
+    }
+    
+    // Only validate payment address fields if not using existing address
+    if (!useExistingAddress) {
+      if (!newCard.payment_address.road_name.trim()) {
+        errors.payment_road_name = 'Road name is required';
+      }
+      
+      if (!newCard.payment_address.number || newCard.payment_address.number <= 0) {
+        errors.payment_number = 'Valid number is required';
+      }
+      
+      if (!newCard.payment_address.city.trim()) {
+        errors.payment_city = 'City is required';
+      }
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleAddAddress = async (e: FormEvent) => {
     e.preventDefault();
     
-    if (!profile) return;
+    if (!validateAddressForm()) return;
+    if (!user?.email) return;
     
-    // In a real app, make an API call to add the address
-    // For example:
-    // const response = await fetch('/api/addresses', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(newAddress)
-    // });
+    setSubmittingAddress(true);
+    setError(null);
     
-    // Mock API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Update local state
-    const newId = Math.max(...profile.addresses.map(a => a.id)) + 1;
-    setProfile({
-      ...profile,
-      addresses: [...profile.addresses, { id: newId, ...newAddress }]
-    });
-    
-    // Reset form
-    setNewAddress({ road_name: '', number: 0, city: '' });
-    setShowAddAddress(false);
+    try {
+      // Use API function to add address
+      const response = await addClientAddress(user.email, newAddress);
+      
+      if (response.success) {
+        // Update local state with the new address
+        setAddresses([...addresses, newAddress]);
+        
+        // Reset form
+        setNewAddress({ road_name: '', number: 0, city: '' });
+        setShowAddAddress(false);
+      } else {
+        setError(response.error || 'Failed to add address');
+      }
+    } catch (err) {
+      console.error('Error adding address:', err);
+      setError('An error occurred while adding the address. Please try again.');
+    } finally {
+      setSubmittingAddress(false);
+    }
   };
 
   const handleAddCard = async (e: FormEvent) => {
     e.preventDefault();
     
-    if (!profile) return;
+    if (!validateCardForm()) return;
+    if (!user?.email) return;
     
-    // In a real app, make an API call to add the card
-    // For example:
-    // const response = await fetch('/api/credit-cards', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(newCard)
-    // });
+    setSubmittingCard(true);
+    setError(null);
     
-    // Mock API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Update local state
-    const newId = Math.max(...profile.creditCards.map(c => c.id)) + 1;
-    setProfile({
-      ...profile,
-      creditCards: [...profile.creditCards, { id: newId, ...newCard }]
-    });
-    
-    // Reset form
-    setNewCard({
-      card_number: '',
-      payment_address: {
-        road_name: '',
-        number: 0,
-        city: ''
+    try {
+      // Use API function to add credit card
+      const response = await addClientCreditCard(user.email, {
+        card_number: newCard.card_number.replace(/\s/g, ''), // Remove spaces
+        payment_address: newCard.payment_address
+      });
+      
+      if (response.success) {
+        // Update local state with the new card
+        setCreditCards([...creditCards, {
+          card_number: newCard.card_number,
+          road_name: newCard.payment_address.road_name,
+          number: newCard.payment_address.number,
+          city: newCard.payment_address.city
+        }]);
+        
+        // Reset form
+        setNewCard({
+          card_number: '',
+          payment_address: {
+            road_name: '',
+            number: 0,
+            city: ''
+          }
+        });
+        setUseExistingAddress(false);
+        setShowAddCard(false);
+      } else {
+        setError(response.error || 'Failed to add credit card');
       }
-    });
-    setUseExistingAddress(false);
-    setShowAddCard(false);
+    } catch (err) {
+      console.error('Error adding credit card:', err);
+      setError('An error occurred while adding the credit card. Please try again.');
+    } finally {
+      setSubmittingCard(false);
+    }
   };
 
-  const handleRemoveAddress = async (id: number) => {
-    if (!profile) return;
+  const handleRemoveAddress = async (index: number) => {
+    if (!user?.email) return;
     
-    // In a real app, make an API call to remove the address
-    // For example:
-    // await fetch(`/api/addresses/${id}`, {
-    //   method: 'DELETE'
-    // });
-    
-    // Mock API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Update local state
-    setProfile({
-      ...profile,
-      addresses: profile.addresses.filter(a => a.id !== id)
-    });
+    try {
+      const addressToRemove = addresses[index];
+      
+      // Use API function to remove address
+      const response = await removeClientAddress(user.email, addressToRemove);
+      
+      if (response.success) {
+        // Update local state
+        const updatedAddresses = [...addresses];
+        updatedAddresses.splice(index, 1);
+        setAddresses(updatedAddresses);
+      } else {
+        setError(response.error || 'Failed to remove address');
+      }
+    } catch (err) {
+      console.error('Error removing address:', err);
+      setError('An error occurred while removing the address. Please try again.');
+    }
   };
 
-  const handleRemoveCard = async (id: number) => {
-    if (!profile) return;
+  const handleRemoveCard = async (index: number) => {
+    if (!user?.email) return;
     
-    // In a real app, make an API call to remove the card
-    // For example:
-    // await fetch(`/api/credit-cards/${id}`, {
-    //   method: 'DELETE'
-    // });
-    
-    // Mock API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Update local state
-    setProfile({
-      ...profile,
-      creditCards: profile.creditCards.filter(c => c.id !== id)
-    });
+    try {
+      const cardToRemove = creditCards[index];
+      
+      // Use API function to remove credit card
+      const response = await removeClientCreditCard(user.email, cardToRemove.card_number.replace(/\s/g, ''));
+      
+      if (response.success) {
+        // Update local state
+        const updatedCards = [...creditCards];
+        updatedCards.splice(index, 1);
+        setCreditCards(updatedCards);
+      } else {
+        setError(response.error || 'Failed to remove credit card');
+      }
+    } catch (err) {
+      console.error('Error removing credit card:', err);
+      setError('An error occurred while removing the credit card. Please try again.');
+    }
   };
 
   if (loading) {
@@ -230,16 +292,23 @@ export default function ClientProfile() {
     );
   }
 
-  if (!profile) {
+  if (error && !user) {
     return (
       <div className="text-center text-red-500 p-6 bg-white rounded-xl shadow-md">
-        Failed to load profile
+        {error}
       </div>
     );
   }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
+          {error}
+        </div>
+      )}
+      
+      {/* Personal Information */}
       <div className="bg-white rounded-xl shadow-md">
         <div className="p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-800">Personal Information</h2>
@@ -248,11 +317,11 @@ export default function ClientProfile() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <h3 className="text-sm font-medium text-gray-500">Name</h3>
-              <p className="mt-1 text-gray-800">{profile.name}</p>
+              <p className="mt-1 text-gray-800">{user?.name}</p>
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-500">Email</h3>
-              <p className="mt-1 text-gray-800">{profile.email}</p>
+              <p className="mt-1 text-gray-800">{user?.email}</p>
             </div>
           </div>
         </div>
@@ -283,9 +352,12 @@ export default function ClientProfile() {
                     id="road_name"
                     value={newAddress.road_name}
                     onChange={(e) => setNewAddress({ ...newAddress, road_name: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className={`w-full border ${formErrors.road_name ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent`}
                     required
                   />
+                  {formErrors.road_name && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.road_name}</p>
+                  )}
                 </div>
                 <div>
                   <label htmlFor="number" className="block text-sm font-medium text-gray-700 mb-1">
@@ -296,9 +368,12 @@ export default function ClientProfile() {
                     id="number"
                     value={newAddress.number || ''}
                     onChange={(e) => setNewAddress({ ...newAddress, number: parseInt(e.target.value) || 0 })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className={`w-full border ${formErrors.number ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent`}
                     required
                   />
+                  {formErrors.number && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.number}</p>
+                  )}
                 </div>
                 <div>
                   <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
@@ -309,36 +384,40 @@ export default function ClientProfile() {
                     id="city"
                     value={newAddress.city}
                     onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className={`w-full border ${formErrors.city ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent`}
                     required
                   />
+                  {formErrors.city && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.city}</p>
+                  )}
                 </div>
                 <div className="md:col-span-3">
                   <button
                     type="submit"
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors shadow-md font-medium"
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors shadow-md font-medium disabled:bg-indigo-300"
+                    disabled={submittingAddress}
                   >
-                    Save Address
+                    {submittingAddress ? 'Saving...' : 'Save Address'}
                   </button>
                 </div>
               </form>
             </div>
           )}
           
-          {profile.addresses.length === 0 ? (
+          {addresses.length === 0 ? (
             <div className="text-center py-6 text-gray-500">
               No addresses added yet.
             </div>
           ) : (
             <div className="space-y-4">
-              {profile.addresses.map((address) => (
-                <div key={address.id} className="flex justify-between items-center border-b pb-4">
+              {addresses.map((address, index) => (
+                <div key={index} className="flex justify-between items-center border-b pb-4">
                   <div>
                     <p className="text-gray-800">{address.road_name} {address.number}</p>
                     <p className="text-sm text-gray-500">{address.city}</p>
                   </div>
                   <button
-                    onClick={() => handleRemoveAddress(address.id)}
+                    onClick={() => handleRemoveAddress(index)}
                     className="text-red-600 hover:text-red-800 text-sm font-medium transition-colors"
                   >
                     Remove
@@ -374,17 +453,30 @@ export default function ClientProfile() {
                     type="text"
                     id="card_number"
                     value={newCard.card_number}
-                    onChange={(e) => setNewCard({ ...newCard, card_number: e.target.value })}
-                    placeholder="**** **** **** ****"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    onChange={(e) => {
+                      // Format card number with spaces
+                      const value = e.target.value.replace(/\s/g, '');
+                      const formattedValue = value
+                        .replace(/[^\d]/g, '')
+                        .slice(0, 16)
+                        .replace(/(.{4})/g, '$1 ')
+                        .trim();
+                      
+                      setNewCard({ ...newCard, card_number: formattedValue });
+                    }}
+                    placeholder="1234 5678 9012 3456"
+                    className={`w-full border ${formErrors.card_number ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent`}
                     required
                   />
+                  {formErrors.card_number && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.card_number}</p>
+                  )}
                 </div>
                 
                 <div>
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Billing Address</h4>
                   
-                  {profile.addresses.length > 0 && (
+                  {addresses.length > 0 && (
                     <div className="mb-4">
                       <label className="flex items-center">
                         <input
@@ -406,8 +498,8 @@ export default function ClientProfile() {
                             value={selectedAddressIndex}
                             onChange={(e) => setSelectedAddressIndex(parseInt(e.target.value))}
                           >
-                            {profile.addresses.map((address, index) => (
-                              <option key={address.id} value={index}>
+                            {addresses.map((address, index) => (
+                              <option key={index} value={index}>
                                 {address.road_name} {address.number}, {address.city}
                               </option>
                             ))}
@@ -433,10 +525,13 @@ export default function ClientProfile() {
                             road_name: e.target.value
                           }
                         })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className={`w-full border ${formErrors.payment_road_name ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent`}
                         required
                         disabled={useExistingAddress}
                       />
+                      {formErrors.payment_road_name && !useExistingAddress && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.payment_road_name}</p>
+                      )}
                     </div>
                     <div>
                       <label htmlFor="pa_number" className="block text-sm font-medium text-gray-700 mb-1">
@@ -453,10 +548,13 @@ export default function ClientProfile() {
                             number: parseInt(e.target.value) || 0
                           }
                         })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className={`w-full border ${formErrors.payment_number ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent`}
                         required
                         disabled={useExistingAddress}
                       />
+                      {formErrors.payment_number && !useExistingAddress && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.payment_number}</p>
+                      )}
                     </div>
                     <div>
                       <label htmlFor="pa_city" className="block text-sm font-medium text-gray-700 mb-1">
@@ -473,10 +571,13 @@ export default function ClientProfile() {
                             city: e.target.value
                           }
                         })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className={`w-full border ${formErrors.payment_city ? 'border-red-300 bg-red-50' : 'border-gray-300'} rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent`}
                         required
                         disabled={useExistingAddress}
                       />
+                      {formErrors.payment_city && !useExistingAddress && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.payment_city}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -484,36 +585,39 @@ export default function ClientProfile() {
                 <div>
                   <button
                     type="submit"
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors shadow-md font-medium"
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors shadow-md font-medium disabled:bg-indigo-300"
+                    disabled={submittingCard}
                   >
-                    Save Card
+                    {submittingCard ? 'Saving...' : 'Save Card'}
                   </button>
                 </div>
               </form>
             </div>
           )}
           
-          {profile.creditCards.length === 0 ? (
+          {creditCards.length === 0 ? (
             <div className="text-center py-6 text-gray-500">
               No payment methods added yet.
             </div>
           ) : (
             <div className="space-y-4">
-              {profile.creditCards.map((card) => (
-                <div key={card.id} className="flex justify-between items-center border-b pb-4">
+              {creditCards.map((card, index) => (
+                <div key={index} className="flex justify-between items-center border-b pb-4">
                   <div>
                     <div className="flex items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                       </svg>
-                      <p className="text-gray-800">{card.card_number}</p>
+                      <p className="text-gray-800">
+                        •••• •••• •••• {card.card_number.slice(-4)}
+                      </p>
                     </div>
                     <p className="text-sm text-gray-500 mt-1">
-                      {card.payment_address.road_name} {card.payment_address.number}, {card.payment_address.city}
+                      {card.road_name} {card.number}, {card.city}
                     </p>
                   </div>
                   <button
-                    onClick={() => handleRemoveCard(card.id)}
+                    onClick={() => handleRemoveCard(index)}
                     className="text-red-600 hover:text-red-800 text-sm font-medium transition-colors"
                   >
                     Remove

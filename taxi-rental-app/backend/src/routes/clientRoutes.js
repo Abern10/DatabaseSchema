@@ -373,4 +373,296 @@ router.get('/:email/reviews', async (req, res) => {
   }
 });
 
+// Add an address for a client
+router.post('/:email/addresses', async (req, res) => {
+  const { email } = req.params;
+  const { road_name, number, city } = req.body;
+  
+  try {
+    // Get client_id from email
+    const clientResult = await req.db.query(
+      'SELECT client_id FROM Client WHERE email = $1',
+      [email]
+    );
+    
+    if (clientResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
+    
+    const clientId = clientResult.rows[0].client_id;
+    
+    // Start transaction
+    await req.db.query('BEGIN');
+    
+    // Insert address and get the address_id
+    const addressResult = await req.db.query(
+      `INSERT INTO Address (road_name, number, city) 
+       VALUES ($1, $2, $3) 
+       RETURNING address_id`,
+      [road_name, number, city]
+    );
+    
+    const addressId = addressResult.rows[0].address_id;
+    
+    // Connect client to address
+    await req.db.query(
+      `INSERT INTO Client_Address (client_id, address_id) 
+       VALUES ($1, $2)`,
+      [clientId, addressId]
+    );
+    
+    // Commit transaction
+    await req.db.query('COMMIT');
+    
+    res.status(201).json({ 
+      success: true,
+      message: 'Address added successfully',
+      data: { road_name, number, city }
+    });
+  } catch (error) {
+    // Rollback transaction if error
+    await req.db.query('ROLLBACK');
+    
+    console.error('Error adding address:', error);
+    res.status(400).json({ error: 'Failed to add address' });
+  }
+});
+
+// Delete an address for a client
+router.delete('/:email/addresses', async (req, res) => {
+  const { email } = req.params;
+  const { road_name, number, city } = req.body;
+  
+  try {
+    // Get client_id from email
+    const clientResult = await req.db.query(
+      'SELECT client_id FROM Client WHERE email = $1',
+      [email]
+    );
+    
+    if (clientResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
+    
+    const clientId = clientResult.rows[0].client_id;
+    
+    // Find the address_id
+    const addressResult = await req.db.query(
+      `SELECT a.address_id 
+       FROM Address a
+       JOIN Client_Address ca ON a.address_id = ca.address_id
+       WHERE ca.client_id = $1 
+       AND a.road_name = $2 
+       AND a.number = $3 
+       AND a.city = $4`,
+      [clientId, road_name, number, city]
+    );
+    
+    if (addressResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Address not found' });
+    }
+    
+    const addressId = addressResult.rows[0].address_id;
+    
+    // Start transaction
+    await req.db.query('BEGIN');
+    
+    // Check if address is used by any credit cards
+    const cardResult = await req.db.query(
+      'SELECT 1 FROM CreditCard WHERE payment_address_id = $1',
+      [addressId]
+    );
+    
+    if (cardResult.rows.length > 0) {
+      await req.db.query('ROLLBACK');
+      return res.status(400).json({ 
+        error: 'Cannot delete address that is used by a credit card' 
+      });
+    }
+    
+    // Delete the client-address association
+    await req.db.query(
+      'DELETE FROM Client_Address WHERE client_id = $1 AND address_id = $2',
+      [clientId, addressId]
+    );
+    
+    // If address is not used by other clients, delete it
+    const otherClientsResult = await req.db.query(
+      'SELECT 1 FROM Client_Address WHERE address_id = $1',
+      [addressId]
+    );
+    
+    if (otherClientsResult.rows.length === 0) {
+      await req.db.query(
+        'DELETE FROM Address WHERE address_id = $1',
+        [addressId]
+      );
+    }
+    
+    // Commit transaction
+    await req.db.query('COMMIT');
+    
+    res.status(200).json({ 
+      success: true,
+      message: 'Address removed successfully' 
+    });
+  } catch (error) {
+    // Rollback transaction if error
+    await req.db.query('ROLLBACK');
+    
+    console.error('Error removing address:', error);
+    res.status(500).json({ error: 'Failed to remove address' });
+  }
+});
+
+// Add a credit card for a client
+router.post('/:email/credit-cards', async (req, res) => {
+  const { email } = req.params;
+  const { card_number, payment_address } = req.body;
+  
+  try {
+    // Get client_id from email
+    const clientResult = await req.db.query(
+      'SELECT client_id FROM Client WHERE email = $1',
+      [email]
+    );
+    
+    if (clientResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
+    
+    const clientId = clientResult.rows[0].client_id;
+    
+    // Start transaction
+    await req.db.query('BEGIN');
+    
+    // Check if card number already exists
+    const cardCheck = await req.db.query(
+      'SELECT 1 FROM CreditCard WHERE card_number = $1',
+      [card_number]
+    );
+    
+    if (cardCheck.rows.length > 0) {
+      await req.db.query('ROLLBACK');
+      return res.status(400).json({ error: 'Credit card already exists' });
+    }
+    
+    // Insert payment address and get the address_id
+    const { road_name, number, city } = payment_address;
+    
+    const addressResult = await req.db.query(
+      `INSERT INTO Address (road_name, number, city) 
+       VALUES ($1, $2, $3) 
+       RETURNING address_id`,
+      [road_name, number, city]
+    );
+    
+    const addressId = addressResult.rows[0].address_id;
+    
+    // Insert credit card
+    await req.db.query(
+      `INSERT INTO CreditCard (card_number, client_id, payment_address_id) 
+       VALUES ($1, $2, $3)`,
+      [card_number, clientId, addressId]
+    );
+    
+    // Commit transaction
+    await req.db.query('COMMIT');
+    
+    res.status(201).json({ 
+      success: true,
+      message: 'Credit card added successfully',
+      data: { 
+        card_number,
+        road_name,
+        number,
+        city
+      }
+    });
+  } catch (error) {
+    // Rollback transaction if error
+    await req.db.query('ROLLBACK');
+    
+    console.error('Error adding credit card:', error);
+    res.status(400).json({ error: 'Failed to add credit card' });
+  }
+});
+
+// Delete a credit card for a client
+router.delete('/:email/credit-cards', async (req, res) => {
+  const { email } = req.params;
+  const { card_number } = req.body;
+  
+  try {
+    // Get client_id from email
+    const clientResult = await req.db.query(
+      'SELECT client_id FROM Client WHERE email = $1',
+      [email]
+    );
+    
+    if (clientResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
+    
+    const clientId = clientResult.rows[0].client_id;
+    
+    // Get the credit card and payment address
+    const cardResult = await req.db.query(
+      `SELECT payment_address_id 
+       FROM CreditCard 
+       WHERE card_number = $1 AND client_id = $2`,
+      [card_number, clientId]
+    );
+    
+    if (cardResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Credit card not found' });
+    }
+    
+    const addressId = cardResult.rows[0].payment_address_id;
+    
+    // Start transaction
+    await req.db.query('BEGIN');
+    
+    // Delete the credit card
+    await req.db.query(
+      'DELETE FROM CreditCard WHERE card_number = $1',
+      [card_number]
+    );
+    
+    // Check if address is used by other cards or clients
+    const addressUsageResult = await req.db.query(
+      `SELECT 1 
+       FROM CreditCard 
+       WHERE payment_address_id = $1 
+       UNION 
+       SELECT 1 
+       FROM Client_Address 
+       WHERE address_id = $1`,
+      [addressId]
+    );
+    
+    // If address is not used elsewhere, delete it
+    if (addressUsageResult.rows.length === 0) {
+      await req.db.query(
+        'DELETE FROM Address WHERE address_id = $1',
+        [addressId]
+      );
+    }
+    
+    // Commit transaction
+    await req.db.query('COMMIT');
+    
+    res.status(200).json({ 
+      success: true,
+      message: 'Credit card removed successfully' 
+    });
+  } catch (error) {
+    // Rollback transaction if error
+    await req.db.query('ROLLBACK');
+    
+    console.error('Error removing credit card:', error);
+    res.status(500).json({ error: 'Failed to remove credit card' });
+  }
+});
+
 module.exports = router;

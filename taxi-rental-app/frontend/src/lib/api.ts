@@ -269,7 +269,13 @@ export async function bookRent(rentData: any): Promise<ApiResponse<any>> {
 }
 
 // Submit a review
-export async function submitReview(reviewData: any): Promise<ApiResponse<any>> {
+export async function submitReview(reviewData: {
+  driver_name: string;
+  rating: number;
+  message: string;
+  client_email: string;
+  rent_id?: number;
+}): Promise<ApiResponse<any>> {
   try {
     const response = await fetch(`${API_URL}/clients/reviews`, {
       method: 'POST',
@@ -327,6 +333,54 @@ export async function getAllDriverCarModels(): Promise<ApiResponse<any>> {
   }
 }
 
+// Add a new address for a client
+export async function addClientAddress(email: string, address: {
+  road_name: string;
+  number: number;
+  city: string;
+}): Promise<ApiResponse<any>> {
+  try {
+    const response = await fetch(`${API_URL}/clients/${email}/addresses`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(address),
+    });
+    
+    return handleResponse(response);
+  } catch (error) {
+    return {
+      success: false,
+      error: 'Network error, please try again later.',
+    };
+  }
+}
+
+// Remove an address for a client
+export async function removeClientAddress(email: string, address: {
+  road_name: string;
+  number: number;
+  city: string;
+}): Promise<ApiResponse<any>> {
+  try {
+    const response = await fetch(`${API_URL}/clients/${email}/addresses`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(address),
+    });
+    
+    return handleResponse(response);
+  } catch (error) {
+    return {
+      success: false,
+      error: 'Network error, please try again later.',
+    };
+  }
+}
+
 // Update driver's address
 export async function updateDriverAddress(name: string, addressData: any): Promise<ApiResponse<any>> {
   try {
@@ -336,6 +390,53 @@ export async function updateDriverAddress(name: string, addressData: any): Promi
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(addressData),
+    });
+    
+    return handleResponse(response);
+  } catch (error) {
+    return {
+      success: false,
+      error: 'Network error, please try again later.',
+    };
+  }
+}
+
+// Add a new credit card for a client
+export async function addClientCreditCard(email: string, card: {
+  card_number: string;
+  payment_address: {
+    road_name: string;
+    number: number;
+    city: string;
+  };
+}): Promise<ApiResponse<any>> {
+  try {
+    const response = await fetch(`${API_URL}/clients/${email}/credit-cards`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(card),
+    });
+    
+    return handleResponse(response);
+  } catch (error) {
+    return {
+      success: false,
+      error: 'Network error, please try again later.',
+    };
+  }
+}
+
+// Remove a credit card for a client
+export async function removeClientCreditCard(email: string, cardNumber: string): Promise<ApiResponse<any>> {
+  try {
+    const response = await fetch(`${API_URL}/clients/${email}/credit-cards`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ card_number: cardNumber }),
     });
     
     return handleResponse(response);
