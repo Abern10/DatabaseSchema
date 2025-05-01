@@ -79,14 +79,21 @@ export default function ClientReviews() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-full">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-full">
+        <div className="p-6 bg-white rounded-xl shadow-md">
+          <div className="w-12 h-12 mx-auto mb-4 border-t-4 border-indigo-500 border-solid rounded-full animate-spin"></div>
+          <p className="text-center text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm">
+    <div className="bg-white rounded-xl shadow-md">
       <div className="p-6 border-b flex justify-between items-center">
-        <h2 className="text-xl font-semibold">My Reviews</h2>
-        <Link href="/client/rents" className="text-blue-600 hover:underline text-sm">
+        <h2 className="text-xl font-semibold text-gray-800">My Reviews</h2>
+        <Link href="/client/rents" className="text-indigo-600 hover:text-indigo-800 text-sm font-medium transition-colors">
           View My Rents
         </Link>
       </div>
@@ -95,24 +102,24 @@ export default function ClientReviews() {
         {reviews.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-gray-500 mb-4">You haven't provided any reviews yet.</p>
-            <Link href="/client/rents" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+            <Link href="/client/rents" className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-md">
               Go to My Rents
             </Link>
           </div>
         ) : (
           <div className="space-y-6">
             {reviews.map((review) => (
-              <div key={review.id} className="border rounded-lg p-4 hover:shadow-sm transition-shadow">
+              <div key={review.id} className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-all hover:border-indigo-300">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-semibold">{review.driver_name}</h3>
-                    <p className="text-sm text-gray-500">Trip on {review.rent_date}</p>
+                    <h3 className="font-semibold text-gray-800">{review.driver_name}</h3>
+                    <p className="text-sm text-gray-500 mt-1">Trip on {review.rent_date}</p>
                   </div>
-                  <div className="flex">
+                  <div className="flex text-lg">
                     {renderStars(review.rating)}
                   </div>
                 </div>
-                <p className="mt-2">{review.message}</p>
+                <p className="mt-3 text-gray-700">{review.message}</p>
                 <div className="mt-3 text-right">
                   <span className="text-xs text-gray-500">Reviewed on {review.created_at}</span>
                 </div>

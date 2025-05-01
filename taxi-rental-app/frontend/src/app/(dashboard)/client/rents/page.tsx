@@ -117,14 +117,21 @@ export default function ClientRents() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-full">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-full">
+        <div className="p-6 bg-white rounded-xl shadow-md">
+          <div className="w-12 h-12 mx-auto mb-4 border-t-4 border-indigo-500 border-solid rounded-full animate-spin"></div>
+          <p className="text-center text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm">
+    <div className="bg-white rounded-xl shadow-md">
       <div className="flex items-center justify-between p-6 border-b">
-        <h2 className="text-xl font-semibold">My Rents</h2>
-        <Link href="/client/book" className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">
+        <h2 className="text-xl font-semibold text-gray-800">My Rents</h2>
+        <Link href="/client/book" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-md">
           Book a New Rent
         </Link>
       </div>
@@ -132,31 +139,31 @@ export default function ClientRents() {
       {/* Filter Tabs */}
       <div className="flex border-b">
         <button
-          className={`px-4 py-2 font-medium text-sm ${filter === 'all' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${filter === 'all' ? 'text-indigo-600 border-indigo-600' : 'text-gray-500 border-transparent hover:text-indigo-500 hover:border-indigo-300'}`}
           onClick={() => handleFilterChange('all')}
         >
           All
         </button>
         <button
-          className={`px-4 py-2 font-medium text-sm ${filter === 'upcoming' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${filter === 'upcoming' ? 'text-indigo-600 border-indigo-600' : 'text-gray-500 border-transparent hover:text-indigo-500 hover:border-indigo-300'}`}
           onClick={() => handleFilterChange('upcoming')}
         >
           Upcoming
         </button>
         <button
-          className={`px-4 py-2 font-medium text-sm ${filter === 'in progress' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${filter === 'in progress' ? 'text-indigo-600 border-indigo-600' : 'text-gray-500 border-transparent hover:text-indigo-500 hover:border-indigo-300'}`}
           onClick={() => handleFilterChange('in progress')}
         >
           In Progress
         </button>
         <button
-          className={`px-4 py-2 font-medium text-sm ${filter === 'completed' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${filter === 'completed' ? 'text-indigo-600 border-indigo-600' : 'text-gray-500 border-transparent hover:text-indigo-500 hover:border-indigo-300'}`}
           onClick={() => handleFilterChange('completed')}
         >
           Completed
         </button>
         <button
-          className={`px-4 py-2 font-medium text-sm ${filter === 'cancelled' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${filter === 'cancelled' ? 'text-indigo-600 border-indigo-600' : 'text-gray-500 border-transparent hover:text-indigo-500 hover:border-indigo-300'}`}
           onClick={() => handleFilterChange('cancelled')}
         >
           Cancelled
@@ -180,52 +187,52 @@ export default function ClientRents() {
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredRents.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                   No rents found matching the selected filter.
                 </td>
               </tr>
             ) : (
               filteredRents.map((rent) => (
-                <tr key={rent.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">{rent.date}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{rent.driver_name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{rent.brand} ({rent.color})</td>
+                <tr key={rent.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{rent.date}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{rent.driver_name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{rent.brand} ({rent.color})</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span 
                       className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
                       ${rent.status === 'Completed' ? 'bg-green-100 text-green-800' : 
-                        rent.status === 'Upcoming' ? 'bg-blue-100 text-blue-800' : 
+                        rent.status === 'Upcoming' ? 'bg-indigo-100 text-indigo-800' : 
                         rent.status === 'In Progress' ? 'bg-yellow-100 text-yellow-800' : 
                         'bg-red-100 text-red-800'}`}
                     >
                       {rent.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                     ${rent.total_cost?.toFixed(2) || '0.00'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {rent.driver_rating ? (
                       <div className="flex items-center">
                         <span className="text-yellow-500 mr-1">★</span>
-                        <span>{rent.driver_rating}</span>
+                        <span className="text-sm text-gray-700">{rent.driver_rating}</span>
                       </div>
                     ) : (
-                      <span className="text-gray-400">Not rated</span>
+                      <span className="text-sm text-gray-400">Not rated</span>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {rent.status === 'Completed' && !rent.driver_rating && (
                       <Link 
                         href={`/client/reviews/add?driver=${rent.driver_id}&rent=${rent.id}`}
-                        className="text-blue-600 hover:underline"
+                        className="text-indigo-600 hover:text-indigo-900 text-sm font-medium transition-colors"
                       >
                         Rate Driver
                       </Link>
                     )}
                     {rent.status === 'Upcoming' && (
                       <button 
-                        className="text-red-600 hover:underline"
+                        className="text-red-600 hover:text-red-900 text-sm font-medium transition-colors"
                         onClick={() => {
                           // In a real app, this would make an API call to cancel the rent
                           alert(`Cancelled rent #${rent.id}`);

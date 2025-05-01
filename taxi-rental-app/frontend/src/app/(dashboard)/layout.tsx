@@ -22,54 +22,32 @@ type UserType = 'client' | 'driver' | 'manager';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const [collapsed, setCollapsed] = useState(false);
-    const [userType, setUserType] = useState<UserType | null>('client'); // Set to client to develop frontend client pages
+    const [userType, setUserType] = useState<UserType | null>(null);
     const router = useRouter();
     const pathname = usePathname();
 
-
-
-    // Commented out to develop frontend client pages
-    // useEffect(() => {
-    //     // Check if user is logged in
-    //     const user = localStorage.getItem('user');
-    //     if (!user) {
-    //         router.push('/');
-    //         return;
-    //     }
-
-    //     try {
-    //         const userData = JSON.parse(user);
-    //         setUserType(userData.userType as UserType);
-
-    //         // Verify user is accessing the right area based on userType
-    //         const currentPath = pathname.split('/')[1]; // Get the first part of the path (client, driver, manager)
-    //         if (userData.userType !== currentPath) {
-    //             router.push(`/${userData.userType}/dashboard`);
-    //         }
-    //     } catch (err) {
-    //         console.error('Error parsing user data', err);
-    //         router.push('/');
-    //     }
-    // }, [pathname, router]);
-
-    // For testing to develop frontend client pages
     useEffect(() => {
-        // Only set mock user data if it doesn't exist yet
-        if (!localStorage.getItem('user')) {
-          const mockUser = {
-            name: 'Test User',
-            email: 'test@example.com',
-            userType: 'client'
-          };
-          localStorage.setItem('user', JSON.stringify(mockUser));
+        // Check if user is logged in
+        const user = localStorage.getItem('user');
+        if (!user) {
+            router.push('/');
+            return;
         }
-        
-        // Set userType based on URL path for testing different user types
-        const currentPath = pathname.split('/')[1];
-        if (currentPath === 'client' || currentPath === 'driver' || currentPath === 'manager') {
-          setUserType(currentPath as UserType);
+
+        try {
+            const userData = JSON.parse(user);
+            setUserType(userData.userType as UserType);
+
+            // Verify user is accessing the right area based on userType
+            const currentPath = pathname.split('/')[1]; // Get the first part of the path (client, driver, manager)
+            if (userData.userType !== currentPath) {
+                router.push(`/${userData.userType}/dashboard`);
+            }
+        } catch (err) {
+            console.error('Error parsing user data', err);
+            router.push('/');
         }
-      }, [pathname]);
+    }, [pathname, router]);
 
     const clientNavItems: NavItem[] = [
         {
@@ -236,22 +214,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
 
     if (!userType) {
-        return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+        return <div className="min-h-screen flex items-center justify-center bg-gray-100">
+            <div className="p-8 bg-white rounded-xl shadow-lg">
+                <div className="w-12 h-12 mx-auto mb-4 border-t-4 border-indigo-500 border-solid rounded-full animate-spin"></div>
+                <p className="text-center text-gray-600">Loading...</p>
+            </div>
+        </div>;
     }
 
     return (
-        <div className="flex h-screen bg-gray-100">
+        <div className="flex h-screen bg-gray-50">
             {/* Sidebar */}
             <div
-                className={`bg-blue-800 text-white ${collapsed ? 'w-16' : 'w-64'
-                    } transition-all duration-300 ease-in-out flex flex-col`}
+                className={`bg-indigo-900 text-white ${collapsed ? 'w-16' : 'w-64'
+                    } transition-all duration-300 ease-in-out flex flex-col shadow-lg`}
             >
                 {/* Sidebar Header */}
-                <div className="flex items-center justify-between p-4 border-b border-blue-700">
+                <div className="flex items-center justify-between p-4 border-b border-indigo-800">
                     {!collapsed && <h1 className="text-xl font-bold">Taxi Rental</h1>}
                     <button
                         onClick={() => setCollapsed(!collapsed)}
-                        className={`p-1 rounded hover:bg-blue-700 ${collapsed ? 'mx-auto' : ''}`}
+                        className={`p-1 rounded-lg hover:bg-indigo-800 transition-colors ${collapsed ? 'mx-auto' : ''}`}
+                        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
                     >
                         <MenuIcon />
                     </button>
@@ -259,15 +243,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 {/* Navigation Links */}
                 <nav className="flex-1 overflow-y-auto py-4">
-                    <ul className="space-y-2 px-2">
+                    <ul className="space-y-1 px-2">
                         {getNavItems().map((item) => (
                             <li key={item.href}>
                                 <Link
                                     href={item.href}
-                                    className={`flex items-center p-2 rounded hover:bg-blue-700 ${pathname === item.href ? 'bg-blue-700' : ''
-                                        }`}
+                                    className={`flex items-center p-2 rounded-lg hover:bg-indigo-800 transition-all duration-200 ${
+                                        pathname === item.href 
+                                            ? 'bg-indigo-700 shadow-md' 
+                                            : ''
+                                    }`}
                                 >
-                                    <span className="mr-3">{item.icon}</span>
+                                    <span className="mr-3 text-indigo-200">{item.icon}</span>
                                     {!collapsed && <span>{item.label}</span>}
                                 </Link>
                             </li>
@@ -276,12 +263,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </nav>
 
                 {/* Logout */}
-                <div className="p-4 border-t border-blue-700">
+                <div className="p-4 border-t border-indigo-800">
                     <button
                         onClick={handleLogout}
-                        className="flex items-center w-full p-2 rounded hover:bg-blue-700"
+                        className="flex items-center w-full p-2 rounded-lg hover:bg-indigo-800 transition-colors"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-indigo-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
                         {!collapsed && <span>Logout</span>}
@@ -294,15 +281,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {/* Header */}
                 <header className="bg-white shadow-sm">
                     <div className="p-4 flex justify-between items-center">
-                        <h2 className="text-xl font-semibold">
+                        <h2 className="text-xl font-semibold text-gray-800">
                             {(() => {
                                 const segment = pathname.split('/').pop();
                                 return segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : 'Dashboard';
                             })()}
                         </h2>
                         <div className="flex items-center">
-                            <span className="mr-2">{userType.charAt(0).toUpperCase() + userType.slice(1)}</span>
-                            <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                            <span className="mr-2 text-gray-600">{userType.charAt(0).toUpperCase() + userType.slice(1)}</span>
+                            <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-md">
                                 {userType.charAt(0).toUpperCase()}
                             </div>
                         </div>
@@ -310,7 +297,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </header>
 
                 {/* Content */}
-                <main className="flex-1 overflow-y-auto p-4 bg-gray-100">
+                <main className="flex-1 overflow-y-auto p-4 bg-gray-50">
                     {children}
                 </main>
             </div>

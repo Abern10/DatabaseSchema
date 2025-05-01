@@ -146,7 +146,14 @@ export default function BookRent() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-full">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-full">
+        <div className="p-6 bg-white rounded-xl shadow-md">
+          <div className="w-12 h-12 mx-auto mb-4 border-t-4 border-indigo-500 border-solid rounded-full animate-spin"></div>
+          <p className="text-center text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   // Get min date (today) for the date picker
@@ -154,11 +161,11 @@ export default function BookRent() {
   const minDate = today.toISOString().split('T')[0];
 
   return (
-    <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm p-6">
-      <h2 className="text-2xl font-semibold mb-6">Book a Rent</h2>
+    <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-md p-6">
+      <h2 className="text-2xl font-semibold mb-6 text-gray-800">Book a Rent</h2>
       
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
           {error}
         </div>
       )}
@@ -175,14 +182,14 @@ export default function BookRent() {
             min={minDate}
             value={selectedDate}
             onChange={(e) => handleDateChange(e.target.value)}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             required
           />
         </div>
         
         {/* Car Model Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             Car Model
           </label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -191,11 +198,11 @@ export default function BookRent() {
                 key={model.model_id}
                 className={`border rounded-lg p-4 cursor-pointer transition-all 
                   ${selectedModel === model.model_id 
-                    ? 'border-blue-500 bg-blue-50' 
-                    : 'hover:border-gray-400'}`}
+                    ? 'border-indigo-500 bg-indigo-50 shadow-md' 
+                    : 'hover:border-indigo-300 hover:shadow-sm'}`}
                 onClick={() => setSelectedModel(model.model_id)}
               >
-                <h4 className="font-semibold">{model.brand}</h4>
+                <h4 className="font-semibold text-gray-800">{model.brand}</h4>
                 <div className="text-sm text-gray-600 mt-1">
                   <p>Color: {model.color}</p>
                   <p>Year: {model.construction_year}</p>
@@ -208,28 +215,28 @@ export default function BookRent() {
         
         {/* Credit Card Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             Payment Method
           </label>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {creditCards.map((card) => (
               <div
                 key={card.card_number}
                 className={`border rounded-lg p-4 cursor-pointer transition-all 
                   ${selectedCard === card.card_number 
-                    ? 'border-blue-500 bg-blue-50' 
-                    : 'hover:border-gray-400'}`}
+                    ? 'border-indigo-500 bg-indigo-50 shadow-md' 
+                    : 'hover:border-indigo-300 hover:shadow-sm'}`}
                 onClick={() => setSelectedCard(card.card_number)}
               >
                 <div className="flex justify-between">
                   <div>
-                    <p className="font-semibold">{card.card_number}</p>
+                    <p className="font-semibold text-gray-800">{card.card_number}</p>
                     <p className="text-sm text-gray-600">
                       {card.payment_address.road_name} {card.payment_address.number}, {card.payment_address.city}
                     </p>
                   </div>
                   <div className="flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                     </svg>
                   </div>
@@ -243,7 +250,7 @@ export default function BookRent() {
         <div className="flex justify-end">
           <button
             type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300"
+            className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:bg-indigo-300 transition-colors shadow-md font-medium"
             disabled={submitting}
           >
             {submitting ? 'Booking...' : 'Book Now'}

@@ -105,16 +105,23 @@ export default function AddReview() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-full">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-full">
+        <div className="p-6 bg-white rounded-xl shadow-md">
+          <div className="w-12 h-12 mx-auto mb-4 border-t-4 border-indigo-500 border-solid rounded-full animate-spin"></div>
+          <p className="text-center text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   if (error && !driver && !rent) {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-md p-6">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
           {error}
         </div>
-        <Link href="/client/rents" className="text-blue-600 hover:underline">
+        <Link href="/client/rents" className="text-indigo-600 hover:text-indigo-800 font-medium transition-colors">
           Return to My Rents
         </Link>
       </div>
@@ -122,18 +129,18 @@ export default function AddReview() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-sm p-6">
-      <h2 className="text-2xl font-semibold mb-6">Rate Your Driver</h2>
+    <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-md p-6">
+      <h2 className="text-2xl font-semibold mb-6 text-gray-800">Rate Your Driver</h2>
       
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
           {error}
         </div>
       )}
       
-      <div className="bg-gray-50 p-4 rounded-lg mb-6">
-        <h3 className="font-semibold">Trip Details</h3>
-        <p className="text-sm text-gray-600 mt-1">Driver: {driver?.name}</p>
+      <div className="bg-gray-50 p-5 rounded-lg mb-6 border border-gray-200">
+        <h3 className="font-medium text-gray-700">Trip Details</h3>
+        <p className="text-sm text-gray-600 mt-2">Driver: {driver?.name}</p>
         <p className="text-sm text-gray-600">Date: {rent?.date}</p>
         <p className="text-sm text-gray-600">Car: {rent?.brand} ({rent?.color})</p>
       </div>
@@ -144,13 +151,13 @@ export default function AddReview() {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Rate Your Experience
           </label>
-          <div className="flex space-x-1 text-2xl">
+          <div className="flex space-x-1 text-3xl">
             {[1, 2, 3, 4, 5].map((star) => (
               <button
                 key={star}
                 type="button"
                 onClick={() => handleRatingChange(star)}
-                className="focus:outline-none"
+                className="focus:outline-none transition-transform hover:scale-110"
               >
                 <span className={star <= rating ? 'text-yellow-500' : 'text-gray-300'}>
                   ★
@@ -178,7 +185,7 @@ export default function AddReview() {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Share details of your experience with this driver..."
-            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
         
@@ -186,13 +193,13 @@ export default function AddReview() {
         <div className="flex justify-between">
           <Link 
             href="/client/rents" 
-            className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            className="px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 font-medium transition-colors"
           >
             Cancel
           </Link>
           <button
             type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300"
+            className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:bg-indigo-300 shadow-md font-medium transition-colors"
             disabled={submitting || rating === 0}
           >
             {submitting ? 'Submitting...' : 'Submit Review'}

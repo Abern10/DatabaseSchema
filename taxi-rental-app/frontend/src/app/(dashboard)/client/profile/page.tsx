@@ -46,6 +46,8 @@ export default function ClientProfile() {
       city: ''
     }
   });
+  const [useExistingAddress, setUseExistingAddress] = useState(false);
+  const [selectedAddressIndex, setSelectedAddressIndex] = useState(0);
 
   useEffect(() => {
     // In a real app, fetch this data from your API
@@ -99,6 +101,21 @@ export default function ClientProfile() {
     
     fetchProfile();
   }, []);
+
+  // Copy address data when using existing address
+  useEffect(() => {
+    if (useExistingAddress && profile?.addresses && profile.addresses.length > 0) {
+      const selectedAddress = profile.addresses[selectedAddressIndex];
+      setNewCard({
+        ...newCard,
+        payment_address: {
+          road_name: selectedAddress.road_name,
+          number: selectedAddress.number,
+          city: selectedAddress.city
+        }
+      });
+    }
+  }, [useExistingAddress, selectedAddressIndex, profile?.addresses]);
 
   const handleAddAddress = async (e: FormEvent) => {
     e.preventDefault();
@@ -160,6 +177,7 @@ export default function ClientProfile() {
         city: ''
       }
     });
+    setUseExistingAddress(false);
     setShowAddCard(false);
   };
 
@@ -202,48 +220,59 @@ export default function ClientProfile() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-full">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-full">
+        <div className="p-6 bg-white rounded-xl shadow-md">
+          <div className="w-12 h-12 mx-auto mb-4 border-t-4 border-indigo-500 border-solid rounded-full animate-spin"></div>
+          <p className="text-center text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!profile) {
-    return <div className="text-center text-red-500">Failed to load profile</div>;
+    return (
+      <div className="text-center text-red-500 p-6 bg-white rounded-xl shadow-md">
+        Failed to load profile
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-white rounded-lg shadow-sm mb-6">
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="bg-white rounded-xl shadow-md">
         <div className="p-6 border-b">
-          <h2 className="text-xl font-semibold">Personal Information</h2>
+          <h2 className="text-xl font-semibold text-gray-800">Personal Information</h2>
         </div>
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <h3 className="text-sm font-medium text-gray-500">Name</h3>
-              <p className="mt-1">{profile.name}</p>
+              <p className="mt-1 text-gray-800">{profile.name}</p>
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-500">Email</h3>
-              <p className="mt-1">{profile.email}</p>
+              <p className="mt-1 text-gray-800">{profile.email}</p>
             </div>
           </div>
         </div>
       </div>
       
       {/* Addresses */}
-      <div className="bg-white rounded-lg shadow-sm mb-6">
+      <div className="bg-white rounded-xl shadow-md">
         <div className="p-6 border-b flex justify-between items-center">
-          <h2 className="text-xl font-semibold">My Addresses</h2>
+          <h2 className="text-xl font-semibold text-gray-800">My Addresses</h2>
           <button
             onClick={() => setShowAddAddress(!showAddAddress)}
-            className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors shadow-md font-medium"
           >
             {showAddAddress ? 'Cancel' : 'Add Address'}
           </button>
         </div>
         <div className="p-6">
           {showAddAddress && (
-            <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-              <h3 className="font-semibold mb-3">Add New Address</h3>
+            <div className="mb-6 p-5 border rounded-lg bg-gray-50">
+              <h3 className="font-medium text-gray-800 mb-4">Add New Address</h3>
               <form onSubmit={handleAddAddress} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label htmlFor="road_name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -254,7 +283,7 @@ export default function ClientProfile() {
                     id="road_name"
                     value={newAddress.road_name}
                     onChange={(e) => setNewAddress({ ...newAddress, road_name: e.target.value })}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     required
                   />
                 </div>
@@ -265,9 +294,9 @@ export default function ClientProfile() {
                   <input
                     type="number"
                     id="number"
-                    value={newAddress.number}
+                    value={newAddress.number || ''}
                     onChange={(e) => setNewAddress({ ...newAddress, number: parseInt(e.target.value) || 0 })}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     required
                   />
                 </div>
@@ -280,14 +309,14 @@ export default function ClientProfile() {
                     id="city"
                     value={newAddress.city}
                     onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     required
                   />
                 </div>
                 <div className="md:col-span-3">
                   <button
                     type="submit"
-                    className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors shadow-md font-medium"
                   >
                     Save Address
                   </button>
@@ -297,20 +326,20 @@ export default function ClientProfile() {
           )}
           
           {profile.addresses.length === 0 ? (
-            <div className="text-center py-4 text-gray-500">
+            <div className="text-center py-6 text-gray-500">
               No addresses added yet.
             </div>
           ) : (
             <div className="space-y-4">
               {profile.addresses.map((address) => (
-                <div key={address.id} className="flex justify-between items-center border-b pb-3">
+                <div key={address.id} className="flex justify-between items-center border-b pb-4">
                   <div>
-                    <p>{address.road_name} {address.number}</p>
+                    <p className="text-gray-800">{address.road_name} {address.number}</p>
                     <p className="text-sm text-gray-500">{address.city}</p>
                   </div>
                   <button
                     onClick={() => handleRemoveAddress(address.id)}
-                    className="text-red-600 hover:text-red-800 text-sm"
+                    className="text-red-600 hover:text-red-800 text-sm font-medium transition-colors"
                   >
                     Remove
                   </button>
@@ -322,20 +351,20 @@ export default function ClientProfile() {
       </div>
       
       {/* Credit Cards */}
-      <div className="bg-white rounded-lg shadow-sm">
+      <div className="bg-white rounded-xl shadow-md">
         <div className="p-6 border-b flex justify-between items-center">
-          <h2 className="text-xl font-semibold">Payment Methods</h2>
+          <h2 className="text-xl font-semibold text-gray-800">Payment Methods</h2>
           <button
             onClick={() => setShowAddCard(!showAddCard)}
-            className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors shadow-md font-medium"
           >
             {showAddCard ? 'Cancel' : 'Add Credit Card'}
           </button>
         </div>
         <div className="p-6">
           {showAddCard && (
-            <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-              <h3 className="font-semibold mb-3">Add New Credit Card</h3>
+            <div className="mb-6 p-5 border rounded-lg bg-gray-50">
+              <h3 className="font-medium text-gray-800 mb-4">Add New Credit Card</h3>
               <form onSubmit={handleAddCard} className="space-y-4">
                 <div>
                   <label htmlFor="card_number" className="block text-sm font-medium text-gray-700 mb-1">
@@ -347,14 +376,48 @@ export default function ClientProfile() {
                     value={newCard.card_number}
                     onChange={(e) => setNewCard({ ...newCard, card_number: e.target.value })}
                     placeholder="**** **** **** ****"
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     required
                   />
                 </div>
                 
                 <div>
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Billing Address</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  
+                  {profile.addresses.length > 0 && (
+                    <div className="mb-4">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                          checked={useExistingAddress}
+                          onChange={(e) => setUseExistingAddress(e.target.checked)}
+                        />
+                        <span className="ml-2 text-sm text-gray-700">Use existing address</span>
+                      </label>
+                      
+                      {useExistingAddress && (
+                        <div className="mt-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Select address
+                          </label>
+                          <select
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                            value={selectedAddressIndex}
+                            onChange={(e) => setSelectedAddressIndex(parseInt(e.target.value))}
+                          >
+                            {profile.addresses.map((address, index) => (
+                              <option key={address.id} value={index}>
+                                {address.road_name} {address.number}, {address.city}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${useExistingAddress ? 'opacity-50' : ''}`}>
                     <div>
                       <label htmlFor="pa_road_name" className="block text-sm font-medium text-gray-700 mb-1">
                         Road Name
@@ -370,8 +433,9 @@ export default function ClientProfile() {
                             road_name: e.target.value
                           }
                         })}
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                         required
+                        disabled={useExistingAddress}
                       />
                     </div>
                     <div>
@@ -381,7 +445,7 @@ export default function ClientProfile() {
                       <input
                         type="number"
                         id="pa_number"
-                        value={newCard.payment_address.number}
+                        value={newCard.payment_address.number || ''}
                         onChange={(e) => setNewCard({
                           ...newCard,
                           payment_address: {
@@ -389,8 +453,9 @@ export default function ClientProfile() {
                             number: parseInt(e.target.value) || 0
                           }
                         })}
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                         required
+                        disabled={useExistingAddress}
                       />
                     </div>
                     <div>
@@ -408,8 +473,9 @@ export default function ClientProfile() {
                             city: e.target.value
                           }
                         })}
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                         required
+                        disabled={useExistingAddress}
                       />
                     </div>
                   </div>
@@ -418,7 +484,7 @@ export default function ClientProfile() {
                 <div>
                   <button
                     type="submit"
-                    className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors shadow-md font-medium"
                   >
                     Save Card
                   </button>
@@ -428,27 +494,27 @@ export default function ClientProfile() {
           )}
           
           {profile.creditCards.length === 0 ? (
-            <div className="text-center py-4 text-gray-500">
+            <div className="text-center py-6 text-gray-500">
               No payment methods added yet.
             </div>
           ) : (
             <div className="space-y-4">
               {profile.creditCards.map((card) => (
-                <div key={card.id} className="flex justify-between items-center border-b pb-3">
+                <div key={card.id} className="flex justify-between items-center border-b pb-4">
                   <div>
                     <div className="flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                       </svg>
-                      <p>{card.card_number}</p>
+                      <p className="text-gray-800">{card.card_number}</p>
                     </div>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 mt-1">
                       {card.payment_address.road_name} {card.payment_address.number}, {card.payment_address.city}
                     </p>
                   </div>
                   <button
                     onClick={() => handleRemoveCard(card.id)}
-                    className="text-red-600 hover:text-red-800 text-sm"
+                    className="text-red-600 hover:text-red-800 text-sm font-medium transition-colors"
                   >
                     Remove
                   </button>
