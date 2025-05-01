@@ -29,12 +29,27 @@ export default function LoginForm({ onSuccessRedirect }: LoginFormProps) {
     
     switch (userType) {
       case 'client':
+        if (!email) {
+          setError('Email is required');
+          setLoading(false);
+          return;
+        }
         credentials = { email };
         break;
       case 'manager':
+        if (!ssn) {
+          setError('SSN is required');
+          setLoading(false);
+          return;
+        }
         credentials = { ssn };
         break;
       case 'driver':
+        if (!name) {
+          setError('Name is required');
+          setLoading(false);
+          return;
+        }
         credentials = { name };
         break;
     }
@@ -74,34 +89,34 @@ export default function LoginForm({ onSuccessRedirect }: LoginFormProps) {
   };
   
   return (
-    <div className="bg-white rounded-lg shadow-md p-5">
-      <h2 className="text-xl font-bold mb-4 text-center">Login</h2>
+    <div className="w-full">
+      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Login</h2>
       
       {error && (
-        <div className="mb-3 p-2 bg-red-100 text-red-700 rounded text-sm">
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
           {error}
         </div>
       )}
       
-      <div className="mb-4">
-        <div className="flex gap-2 justify-center">
+      <div className="mb-6">
+        <div className="flex gap-2 justify-center p-1 bg-gray-100 rounded-lg">
           <button
             type="button"
-            className={`px-3 py-1 text-sm rounded ${userType === 'client' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+            className={`px-4 py-2 text-sm rounded-lg transition-all duration-200 ${userType === 'client' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-700 hover:bg-gray-200'}`}
             onClick={() => setUserType('client')}
           >
             Client
           </button>
           <button
             type="button"
-            className={`px-3 py-1 text-sm rounded ${userType === 'driver' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+            className={`px-4 py-2 text-sm rounded-lg transition-all duration-200 ${userType === 'driver' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-700 hover:bg-gray-200'}`}
             onClick={() => setUserType('driver')}
           >
             Driver
           </button>
           <button
             type="button"
-            className={`px-3 py-1 text-sm rounded ${userType === 'manager' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+            className={`px-4 py-2 text-sm rounded-lg transition-all duration-200 ${userType === 'manager' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-700 hover:bg-gray-200'}`}
             onClick={() => setUserType('manager')}
           >
             Manager
@@ -109,10 +124,10 @@ export default function LoginForm({ onSuccessRedirect }: LoginFormProps) {
         </div>
       </div>
       
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="space-y-4">
         {userType === 'client' && (
-          <div className="mb-3">
-            <label className="block text-gray-700 text-sm font-semibold mb-1" htmlFor="email">
+          <div className="space-y-2">
+            <label className="block text-gray-700 text-sm font-medium" htmlFor="email">
               Email
             </label>
             <input
@@ -120,15 +135,16 @@ export default function LoginForm({ onSuccessRedirect }: LoginFormProps) {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              placeholder="your.email@example.com"
               required
             />
           </div>
         )}
         
         {userType === 'driver' && (
-          <div className="mb-3">
-            <label className="block text-gray-700 text-sm font-semibold mb-1" htmlFor="name">
+          <div className="space-y-2">
+            <label className="block text-gray-700 text-sm font-medium" htmlFor="name">
               Name
             </label>
             <input
@@ -136,15 +152,16 @@ export default function LoginForm({ onSuccessRedirect }: LoginFormProps) {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              placeholder="John Smith"
               required
             />
           </div>
         )}
         
         {userType === 'manager' && (
-          <div className="mb-3">
-            <label className="block text-gray-700 text-sm font-semibold mb-1" htmlFor="ssn">
+          <div className="space-y-2">
+            <label className="block text-gray-700 text-sm font-medium" htmlFor="ssn">
               SSN
             </label>
             <input
@@ -152,7 +169,8 @@ export default function LoginForm({ onSuccessRedirect }: LoginFormProps) {
               type="text"
               value={ssn}
               onChange={(e) => setSsn(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              placeholder="XXX-XX-XXXX"
               required
             />
           </div>
@@ -160,7 +178,7 @@ export default function LoginForm({ onSuccessRedirect }: LoginFormProps) {
         
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded text-sm hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-blue-300"
+          className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:bg-indigo-300 transition-colors duration-200 shadow-md"
           disabled={loading}
         >
           {loading ? 'Logging in...' : 'Login'}

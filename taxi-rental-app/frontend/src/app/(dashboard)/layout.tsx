@@ -22,32 +22,54 @@ type UserType = 'client' | 'driver' | 'manager';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const [collapsed, setCollapsed] = useState(false);
-    const [userType, setUserType] = useState<UserType | null>(null);
+    const [userType, setUserType] = useState<UserType | null>('client'); // Set to client to develop frontend client pages
     const router = useRouter();
     const pathname = usePathname();
 
+
+
+    // Commented out to develop frontend client pages
+    // useEffect(() => {
+    //     // Check if user is logged in
+    //     const user = localStorage.getItem('user');
+    //     if (!user) {
+    //         router.push('/');
+    //         return;
+    //     }
+
+    //     try {
+    //         const userData = JSON.parse(user);
+    //         setUserType(userData.userType as UserType);
+
+    //         // Verify user is accessing the right area based on userType
+    //         const currentPath = pathname.split('/')[1]; // Get the first part of the path (client, driver, manager)
+    //         if (userData.userType !== currentPath) {
+    //             router.push(`/${userData.userType}/dashboard`);
+    //         }
+    //     } catch (err) {
+    //         console.error('Error parsing user data', err);
+    //         router.push('/');
+    //     }
+    // }, [pathname, router]);
+
+    // For testing to develop frontend client pages
     useEffect(() => {
-        // Check if user is logged in
-        const user = localStorage.getItem('user');
-        if (!user) {
-            router.push('/');
-            return;
+        // Only set mock user data if it doesn't exist yet
+        if (!localStorage.getItem('user')) {
+          const mockUser = {
+            name: 'Test User',
+            email: 'test@example.com',
+            userType: 'client'
+          };
+          localStorage.setItem('user', JSON.stringify(mockUser));
         }
-
-        try {
-            const userData = JSON.parse(user);
-            setUserType(userData.userType as UserType);
-
-            // Verify user is accessing the right area based on userType
-            const currentPath = pathname.split('/')[1]; // Get the first part of the path (client, driver, manager)
-            if (userData.userType !== currentPath) {
-                router.push(`/${userData.userType}/dashboard`);
-            }
-        } catch (err) {
-            console.error('Error parsing user data', err);
-            router.push('/');
+        
+        // Set userType based on URL path for testing different user types
+        const currentPath = pathname.split('/')[1];
+        if (currentPath === 'client' || currentPath === 'driver' || currentPath === 'manager') {
+          setUserType(currentPath as UserType);
         }
-    }, [pathname, router]);
+      }, [pathname]);
 
     const clientNavItems: NavItem[] = [
         {
