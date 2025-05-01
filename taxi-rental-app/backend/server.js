@@ -3,20 +3,17 @@ const cors = require('cors');
 const { Pool } = require('pg');
 require('dotenv').config();  // Load environment variables
 
-// Routes
-const managerRoutes = require('./src/routes/managerRoutes');
-const driverRoutes = require('./src/routes/driverRoutes');
-const clientRoutes = require('./src/routes/clientRoutes');
-const carRoutes = require('./src/routes/carRoutes');
-const rentRoutes = require('./src/routes/rentRoutes');
+// Initialize Express app
+const app = express();
+const PORT = 5000;
 
 // Database connection configuration using environment variables
 const dbConfig = {
-  user: process.env.DB_USER,         // replace with your DB username in a .env file
-  password: process.env.DB_PASSWORD, // replace with your DB password in a .env file
-  host: process.env.DB_HOST,         // replace with your DB host in a .env file
-  port: process.env.DB_PORT,         // replace with your DB port in a .env file
-  database: process.env.DB_DATABASE  // replace with your DB name in a .env file
+  user: process.env.DB_USER,         
+  password: process.env.DB_PASSWORD, 
+  host: process.env.DB_HOST,         
+  port: process.env.DB_PORT,         
+  database: process.env.DB_DATABASE  
 };
 
 // Initialize PostgreSQL connection pool
@@ -30,13 +27,9 @@ pool.connect()
     process.exit(1); // Stop the server if DB connection fails
   });
 
-// Initialize Express app
-const app = express();
-const PORT = 5000;
-
 // Middleware
-app.use(cors());              // Allow requests from other origins (like frontend)
-app.use(express.json());      // Parse incoming JSON request bodies
+app.use(cors());              
+app.use(express.json());      
 
 // Make `pool` available in all routes
 app.use((req, res, next) => {
@@ -44,12 +37,61 @@ app.use((req, res, next) => {
   next();
 });
 
+// Try loading all route files
+let managerRoutes, driverRoutes, clientRoutes, carRoutes, rentRoutes;
+
+try {
+  // Import routes with proper error handling
+  managerRoutes = require('./src/routes/managerRoutes');
+  console.log('Manager routes loaded successfully');
+} catch (error) {
+  console.error('Error loading manager routes:', error.message);
+  managerRoutes = express.Router(); // Create an empty router as fallback
+}
+
+try {
+  driverRoutes = require('./src/routes/driverRoutes');
+  console.log('Driver routes loaded successfully');
+} catch (error) {
+  console.error('Error loading driver routes:', error.message);
+  driverRoutes = express.Router();
+}
+
+try {
+  clientRoutes = require('./src/routes/clientRoutes');
+  console.log('Client routes loaded successfully');
+} catch (error) {
+  console.error('Error loading client routes:', error.message);
+  clientRoutes = express.Router();
+}
+
+try {
+  carRoutes = require('./src/routes/carRoutes');
+  console.log('Car routes loaded successfully');
+} catch (error) {
+  console.error('Error loading car routes:', error.message);
+  carRoutes = express.Router();
+}
+
+try {
+  rentRoutes = require('./src/routes/rentRoutes');
+  console.log('Rent routes loaded successfully');
+} catch (error) {
+  console.error('Error loading rent routes:', error.message);
+  rentRoutes = express.Router();
+}
+
 // Mount routes
 app.use('/api/managers', managerRoutes);
 app.use('/api/drivers', driverRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/cars', carRoutes);
 app.use('/api/rents', rentRoutes);
+
+// Add a simple test route
+app.get('/api/test', (req, res) => {
+  res.status(200).json({ message: 'Server is running!' });
+});
 
 // Global error handler
 app.use((err, req, res, next) => {
