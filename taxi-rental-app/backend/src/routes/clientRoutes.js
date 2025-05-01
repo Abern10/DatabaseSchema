@@ -335,4 +335,42 @@ router.get('/:email/credit-cards', async (req, res) => {
   }
 });
 
+// Get client's reviews
+router.get('/:email/reviews', async (req, res) => {
+  const { email } = req.params;
+  
+  try {
+    // First get the client_id
+    const clientResult = await req.db.query(
+      'SELECT client_id FROM Client WHERE email = $1',
+      [email]
+    );
+    
+    if (clientResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
+    
+    const clientId = clientResult.rows[0].client_id;
+    
+    // Get the reviews
+    const result = await req.db.query(
+      `SELECT r.review_id, r.driver_id, d.name AS driver_name, 
+              r.client_id, r.rating, r.message, 
+              rent.rent_id, rent.date AS rent_date,
+              CURRENT_TIMESTAMP AS created_at
+       FROM Review r
+       JOIN Driver d ON r.driver_id = d.driver_id
+       JOIN Rent rent ON r.driver_id = rent.driver_id AND r.client_id = rent.client_id
+       WHERE r.client_id = $1
+       ORDER BY r.review_id DESC`,
+      [clientId]
+    );
+    
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error getting client reviews:', error);
+    res.status(500).json({ error: 'Failed to get client reviews' });
+  }
+});
+
 module.exports = router;

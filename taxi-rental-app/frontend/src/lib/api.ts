@@ -235,6 +235,19 @@ export async function getClientCreditCards(email: string): Promise<ApiResponse<a
   }
 }
 
+// Get client's reviews
+export async function getClientReviews(email: string): Promise<ApiResponse<any>> {
+  try {
+    const response = await fetch(`${API_URL}/clients/${email}/reviews`);
+    return handleResponse(response);
+  } catch (error) {
+    return {
+      success: false,
+      error: 'Network error, please try again later.',
+    };
+  }
+}
+
 // Book a rent
 export async function bookRent(rentData: any): Promise<ApiResponse<any>> {
   try {
