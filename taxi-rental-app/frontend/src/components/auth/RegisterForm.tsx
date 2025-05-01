@@ -3,7 +3,7 @@
 
 import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { register, RegisterData } from '@/lib/api';
+import { registerClient, RegisterData } from '@/lib/api';
 
 type UserType = 'client' | 'manager' | 'driver';
 
@@ -286,7 +286,7 @@ export default function RegisterForm({ onSuccessRedirect }: RegisterFormProps) {
     }
     
     try {
-      const response = await register(registerData);
+      const response = await registerClient(registerData);
       
       if (response.success) {
         router.push(onSuccessRedirect || '/');

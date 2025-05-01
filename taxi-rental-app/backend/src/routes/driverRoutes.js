@@ -133,4 +133,43 @@ router.delete('/:name/drivable-models/:brand/:carid/:modelid', async (req, res) 
   }
 });
 
+// Get all car models
+router.get('/car-models', async (req, res) => {
+  try {
+    const result = await req.db.query(
+      `SELECT m.brand, m.carid, m.modelid, m.color, 
+              m.construction_year, m.transmission_type 
+       FROM Model m 
+       ORDER BY m.brand, m.carid, m.modelid`
+    );
+    
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error getting car models:', error);
+    res.status(500).json({ error: 'Failed to get car models' });
+  }
+});
+
+// Get all reviews for a driver
+router.get('/:name/reviews', async (req, res) => {
+  const { name } = req.params;
+  
+  try {
+    const result = await req.db.query(
+      `SELECT r.*, c.name as client_name 
+       FROM Review r
+       JOIN Driver d ON r.driver_id = d.driver_id
+       JOIN Client c ON r.client_id = c.client_id
+       WHERE d.name = $1
+       ORDER BY r.review_id DESC`,
+      [name]
+    );
+    
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error getting driver reviews:', error);
+    res.status(500).json({ error: 'Failed to get driver reviews' });
+  }
+});
+
 module.exports = router;

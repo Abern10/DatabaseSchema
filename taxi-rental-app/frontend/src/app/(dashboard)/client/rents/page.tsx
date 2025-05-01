@@ -3,117 +3,98 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { getClientRents } from '@/lib/api';
 
 type Rent = {
-  id: number;
+  rentid: number;
   date: string;
   driver_name: string;
-  driver_id: number;
   brand: string;
-  car_id: number;
-  model_id: number;
+  carid: number;
+  modelid: number;
   color: string;
-  status: 'Upcoming' | 'In Progress' | 'Completed' | 'Cancelled';
-  total_cost?: number;
-  driver_rating?: number;
+  construction_year: number;
+  transmission_type: string;
+  status?: 'Upcoming' | 'In Progress' | 'Completed' | 'Cancelled'; // This will be derived
 };
 
 export default function ClientRents() {
+  const router = useRouter();
   const [rents, setRents] = useState<Rent[]>([]);
   const [filteredRents, setFilteredRents] = useState<Rent[]>([]);
   const [filter, setFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    // In a real app, fetch this data from your API
-    const fetchRents = async () => {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+    // Get user info from localStorage
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const parsedUser = JSON.parse(userData);
+      setUser(parsedUser);
       
-      // Mock data
-      const mockRents: Rent[] = [
-        {
-          id: 1,
-          date: '2025-04-25',
-          driver_name: 'John Smith',
-          driver_id: 1,
-          brand: 'Toyota',
-          car_id: 1,
-          model_id: 1,
-          color: 'Silver',
-          status: 'Completed',
-          total_cost: 75.50,
-          driver_rating: 4
-        },
-        {
-          id: 2,
-          date: '2025-04-30',
-          driver_name: 'Sarah Johnson',
-          driver_id: 2,
-          brand: 'Honda',
-          car_id: 2,
-          model_id: 2,
-          color: 'Blue',
-          status: 'Upcoming',
-          total_cost: 65.00
-        },
-        {
-          id: 3,
-          date: '2025-04-15',
-          driver_name: 'Michael Brown',
-          driver_id: 3,
-          brand: 'Ford',
-          car_id: 3,
-          model_id: 3,
-          color: 'Black',
-          status: 'Completed',
-          total_cost: 82.75,
-          driver_rating: 5
-        },
-        {
-          id: 4,
-          date: '2025-04-28',
-          driver_name: 'Emma Wilson',
-          driver_id: 4,
-          brand: 'Tesla',
-          car_id: 4,
-          model_id: 4,
-          color: 'White',
-          status: 'In Progress',
-          total_cost: 120.00
-        },
-        {
-          id: 5,
-          date: '2025-04-10',
-          driver_name: 'James Davis',
-          driver_id: 5,
-          brand: 'Chevrolet',
-          car_id: 5,
-          model_id: 5,
-          color: 'Red',
-          status: 'Cancelled',
-          total_cost: 0
-        }
-      ];
-      
-      setRents(mockRents);
-      setFilteredRents(mockRents);
-      setLoading(false);
-    };
-    
-    fetchRents();
-  }, []);
-
-  useEffect(() => {
-    if (filter === 'all') {
-      setFilteredRents(rents);
+      // Load user's rents
+      loadRents(parsedUser.email);
     } else {
-      setFilteredRents(rents.filter(rent => rent.status.toLowerCase() === filter));
+      router.push('/'); // Redirect to login if not logged in
     }
-  }, [filter, rents]);
+  }, [router]);
 
-  const handleFilterChange = (newFilter: string) => {
+  const loadRents = async (email: string) => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      const response = await getClientRents(email);
+      
+      if (response.success) {
+        // Add status based on date comparison
+        const today = new Date().toISOString().split('T')[0];
+        const rentsWithStatus = (response.data || []).map((rent: Rent) => ({
+          ...rent,
+          status: determineRentStatus(rent.date)
+        }));
+        
+        setRents(rentsWithStatus);
+        filterRents(rentsWithStatus, filter);
+      } else {
+        setError('Failed to load rents: ' + (response.error || ''));
+        setRents([]);
+        setFilteredRents([]);
+      }
+    } catch (err) {
+      console.error('Error loading rents:', err);
+      setError('An unexpected error occurred while loading your rents.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const determineRentStatus = (date: string): 'Upcoming' | 'In Progress' | 'Completed' => {
+    const today = new Date().toISOString().split('T')[0];
+    const rentDate = new Date(date).toISOString().split('T')[0];
+    
+    if (rentDate > today) return 'Upcoming';
+    if (rentDate === today) return 'In Progress';
+    return 'Completed';
+  };
+
+  const filterRents = (allRents: Rent[], statusFilter: string) => {
+    if (statusFilter === 'all') {
+      setFilteredRents(allRents);
+    } else {
+      const filtered = allRents.filter(rent => 
+        rent.status?.toLowerCase() === statusFilter.toLowerCase()
+      );
+      setFilteredRents(filtered);
+    }
+  };
+
+  const handleStatusFilterChange = (newFilter: string) => {
     setFilter(newFilter);
+    filterRents(rents, newFilter);
   };
 
   if (loading) {
@@ -129,44 +110,44 @@ export default function ClientRents() {
 
   return (
     <div className="bg-white rounded-xl shadow-md">
-      <div className="flex items-center justify-between p-6 border-b">
+      <div className="p-6 border-b flex justify-between items-center">
         <h2 className="text-xl font-semibold text-gray-800">My Rents</h2>
         <Link href="/client/book" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-md">
           Book a New Rent
         </Link>
       </div>
       
+      {error && (
+        <div className="p-4 m-6 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+          {error}
+        </div>
+      )}
+      
       {/* Filter Tabs */}
       <div className="flex border-b">
         <button
           className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${filter === 'all' ? 'text-indigo-600 border-indigo-600' : 'text-gray-500 border-transparent hover:text-indigo-500 hover:border-indigo-300'}`}
-          onClick={() => handleFilterChange('all')}
+          onClick={() => handleStatusFilterChange('all')}
         >
           All
         </button>
         <button
           className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${filter === 'upcoming' ? 'text-indigo-600 border-indigo-600' : 'text-gray-500 border-transparent hover:text-indigo-500 hover:border-indigo-300'}`}
-          onClick={() => handleFilterChange('upcoming')}
+          onClick={() => handleStatusFilterChange('upcoming')}
         >
           Upcoming
         </button>
         <button
           className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${filter === 'in progress' ? 'text-indigo-600 border-indigo-600' : 'text-gray-500 border-transparent hover:text-indigo-500 hover:border-indigo-300'}`}
-          onClick={() => handleFilterChange('in progress')}
+          onClick={() => handleStatusFilterChange('in progress')}
         >
           In Progress
         </button>
         <button
           className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${filter === 'completed' ? 'text-indigo-600 border-indigo-600' : 'text-gray-500 border-transparent hover:text-indigo-500 hover:border-indigo-300'}`}
-          onClick={() => handleFilterChange('completed')}
+          onClick={() => handleStatusFilterChange('completed')}
         >
           Completed
-        </button>
-        <button
-          className={`px-4 py-3 font-medium text-sm border-b-2 transition-colors ${filter === 'cancelled' ? 'text-indigo-600 border-indigo-600' : 'text-gray-500 border-transparent hover:text-indigo-500 hover:border-indigo-300'}`}
-          onClick={() => handleFilterChange('cancelled')}
-        >
-          Cancelled
         </button>
       </div>
       
@@ -179,21 +160,19 @@ export default function ClientRents() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Driver</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Car</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredRents.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
                   No rents found matching the selected filter.
                 </td>
               </tr>
             ) : (
               filteredRents.map((rent) => (
-                <tr key={rent.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={rent.rentid} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{rent.date}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{rent.driver_name}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{rent.brand} ({rent.color})</td>
@@ -208,38 +187,14 @@ export default function ClientRents() {
                       {rent.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    ${rent.total_cost?.toFixed(2) || '0.00'}
-                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {rent.driver_rating ? (
-                      <div className="flex items-center">
-                        <span className="text-yellow-500 mr-1">★</span>
-                        <span className="text-sm text-gray-700">{rent.driver_rating}</span>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-400">Not rated</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {rent.status === 'Completed' && !rent.driver_rating && (
+                    {rent.status === 'Completed' && (
                       <Link 
-                        href={`/client/reviews/add?driver=${rent.driver_id}&rent=${rent.id}`}
+                        href={`/client/reviews/add?driver=${rent.driver_name}&rent=${rent.rentid}`}
                         className="text-indigo-600 hover:text-indigo-900 text-sm font-medium transition-colors"
                       >
                         Rate Driver
                       </Link>
-                    )}
-                    {rent.status === 'Upcoming' && (
-                      <button 
-                        className="text-red-600 hover:text-red-900 text-sm font-medium transition-colors"
-                        onClick={() => {
-                          // In a real app, this would make an API call to cancel the rent
-                          alert(`Cancelled rent #${rent.id}`);
-                        }}
-                      >
-                        Cancel
-                      </button>
                     )}
                   </td>
                 </tr>

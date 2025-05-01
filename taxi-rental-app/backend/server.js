@@ -7,6 +7,15 @@ require('dotenv').config();  // Load environment variables
 const app = express();
 const PORT = 5000;
 
+// Configure CORS with specific options
+const corsOptions = {
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'], // Allow your frontend origins
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],       // Allowed methods
+  allowedHeaders: ['Content-Type', 'Authorization'],          // Allowed headers
+  credentials: true,                                          // Allow cookies
+  optionsSuccessStatus: 200                                   // Some legacy browsers choke on 204
+};
+
 // Database connection configuration using environment variables
 const dbConfig = {
   user: process.env.DB_USER,         
@@ -28,7 +37,7 @@ pool.connect()
   });
 
 // Middleware
-app.use(cors());              
+app.use(cors(corsOptions));   // Use the configured CORS options          
 app.use(express.json());      
 
 // Make `pool` available in all routes
