@@ -1,5 +1,5 @@
 // src/lib/api.ts
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
 
 export type LoginCredentials = {
   email?: string;
@@ -42,7 +42,7 @@ const handleResponse = async (response: Response): Promise<ApiResponse<any>> => 
       success: false,
       error: data.error || `Request failed with status ${response.status}`
     };
-  }
+  } 
   
   return {
     success: true,

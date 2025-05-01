@@ -10,29 +10,33 @@ router.post('/register', async (req, res) => {
     // Start a transaction
     await req.db.query('BEGIN');
     
-    // Insert client
-    await req.db.query(
-      'INSERT INTO Client (name, email) VALUES ($1, $2)',
+    // Insert client and get the client_id
+    const clientResult = await req.db.query(
+      'INSERT INTO Client (name, email) VALUES ($1, $2) RETURNING client_id',
       [name, email]
     );
+    
+    const clientId = clientResult.rows[0].client_id;
     
     // Insert addresses
     for (const address of addresses) {
       const { road_name, number, city } = address;
       
-      // Ensure address exists
-      await req.db.query(
+      // Insert address and get the address_id
+      const addressResult = await req.db.query(
         `INSERT INTO Address (road_name, number, city) 
          VALUES ($1, $2, $3) 
-         ON CONFLICT DO NOTHING`,
+         RETURNING address_id`,
         [road_name, number, city]
       );
       
+      const addressId = addressResult.rows[0].address_id;
+      
       // Connect client to address
       await req.db.query(
-        `INSERT INTO ClientAddress (client_email, road_name, number, city) 
-         VALUES ($1, $2, $3, $4)`,
-        [email, road_name, number, city]
+        `INSERT INTO Client_Address (client_id, address_id) 
+         VALUES ($1, $2)`,
+        [clientId, addressId]
       );
     }
     
@@ -41,19 +45,21 @@ router.post('/register', async (req, res) => {
       const { card_number, payment_address } = card;
       const { road_name, number, city } = payment_address;
       
-      // Ensure address exists
-      await req.db.query(
+      // Insert payment address and get the address_id
+      const addressResult = await req.db.query(
         `INSERT INTO Address (road_name, number, city) 
          VALUES ($1, $2, $3) 
-         ON CONFLICT DO NOTHING`,
+         RETURNING address_id`,
         [road_name, number, city]
       );
       
+      const addressId = addressResult.rows[0].address_id;
+      
       // Insert credit card
       await req.db.query(
-        `INSERT INTO CreditCard (card_number, client_email, address_road_name, address_number, address_city) 
-         VALUES ($1, $2, $3, $4, $5)`,
-        [card_number, email, road_name, number, city]
+        `INSERT INTO CreditCard (card_number, client_id, payment_address_id) 
+         VALUES ($1, $2, $3)`,
+        [card_number, clientId, addressId]
       );
     }
     
@@ -97,24 +103,24 @@ router.get('/available-models', async (req, res) => {
   
   try {
     const result = await req.db.query(
-      `SELECT DISTINCT m.brand, m.carid, m.modelid, m.color, 
+      `SELECT DISTINCT m.brand, m.car_id as carid, m.model_id as modelid, m.color, 
               m.construction_year, m.transmission_type 
        FROM Model m 
        WHERE EXISTS (
          SELECT 1 
          FROM Driver d 
-         JOIN CanDrive cd ON d.name = cd.driver_name 
-         WHERE cd.brand = m.brand AND cd.carid = m.carid AND cd.modelid = m.modelid 
+         JOIN Driver_Model dm ON d.driver_id = dm.driver_id 
+         WHERE dm.model_id = m.model_id
          AND NOT EXISTS (
            SELECT 1 
            FROM Rent r 
-           WHERE r.driver_name = d.name AND r.date = $1
+           WHERE r.driver_id = d.driver_id AND r.date = $1
          )
        ) 
        AND NOT EXISTS (
          SELECT 1 
          FROM Rent r 
-         WHERE r.brand = m.brand AND r.carid = m.carid AND r.modelid = m.modelid 
+         WHERE r.model_id = m.model_id 
          AND r.date = $1
        )`,
       [date]
@@ -129,25 +135,38 @@ router.get('/available-models', async (req, res) => {
 
 // Book a rent
 router.post('/rents', async (req, res) => {
-  const { client_email, date, brand, carid, modelid, card_number, address_road_name, address_number, address_city } = req.body;
+  const { client_email, date, brand, carid, modelid } = req.body;
   
   try {
     // Start a transaction
     await req.db.query('BEGIN');
     
+    // Get client_id from email
+    const clientResult = await req.db.query(
+      'SELECT client_id FROM Client WHERE email = $1',
+      [client_email]
+    );
+    
+    if (clientResult.rows.length === 0) {
+      await req.db.query('ROLLBACK');
+      return res.status(404).json({ error: 'Client not found' });
+    }
+    
+    const clientId = clientResult.rows[0].client_id;
+    
     // Find an available driver for the car model
     const driverResult = await req.db.query(
-      `SELECT d.name 
+      `SELECT d.driver_id 
        FROM Driver d 
-       JOIN CanDrive cd ON d.name = cd.driver_name 
-       WHERE cd.brand = $1 AND cd.carid = $2 AND cd.modelid = $3 
+       JOIN Driver_Model dm ON d.driver_id = dm.driver_id 
+       WHERE dm.model_id = $1 
        AND NOT EXISTS (
          SELECT 1 
          FROM Rent r 
-         WHERE r.driver_name = d.name AND r.date = $4
+         WHERE r.driver_id = d.driver_id AND r.date = $2
        ) 
        LIMIT 1`,
-      [brand, carid, modelid, date]
+      [modelid, date]
     );
     
     if (driverResult.rows.length === 0) {
@@ -155,14 +174,14 @@ router.post('/rents', async (req, res) => {
       return res.status(400).json({ error: 'No available driver for this model' });
     }
     
-    const driver_name = driverResult.rows[0].name;
+    const driverId = driverResult.rows[0].driver_id;
     
     // Check if model is available on that date
     const modelResult = await req.db.query(
       `SELECT 1 
        FROM Rent r 
-       WHERE r.brand = $1 AND r.carid = $2 AND r.modelid = $3 AND r.date = $4`,
-      [brand, carid, modelid, date]
+       WHERE r.model_id = $1 AND r.date = $2`,
+      [modelid, date]
     );
     
     if (modelResult.rows.length > 0) {
@@ -172,12 +191,10 @@ router.post('/rents', async (req, res) => {
     
     // Create the rent
     const rentResult = await req.db.query(
-      `INSERT INTO Rent (date, client_email, driver_name, brand, carid, modelid, card_number, 
-                address_road_name, address_number, address_city) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+      `INSERT INTO Rent (date, client_id, driver_id, model_id) 
+       VALUES ($1, $2, $3, $4) 
        RETURNING *`,
-      [date, client_email, driver_name, brand, carid, modelid, card_number, 
-       address_road_name, address_number, address_city]
+      [date, clientId, driverId, modelid]
     );
     
     // Commit transaction
@@ -199,12 +216,15 @@ router.get('/:email/rents', async (req, res) => {
   
   try {
     const result = await req.db.query(
-      `SELECT r.rentid, r.date, r.driver_name, 
-              r.brand, r.carid, r.modelid,
+      `SELECT r.rent_id as rentid, r.date, d.name as driver_name, 
+              c.brand, m.car_id as carid, m.model_id as modelid,
               m.color, m.construction_year, m.transmission_type
        FROM Rent r
-       JOIN Model m ON r.brand = m.brand AND r.carid = m.carid AND r.modelid = m.modelid
-       WHERE r.client_email = $1
+       JOIN Client cl ON r.client_id = cl.client_id
+       JOIN Driver d ON r.driver_id = d.driver_id
+       JOIN Model m ON r.model_id = m.model_id
+       JOIN Car c ON m.car_id = c.car_id
+       WHERE cl.email = $1
        ORDER BY r.date DESC`,
       [email]
     );
@@ -221,11 +241,34 @@ router.post('/reviews', async (req, res) => {
   const { driver_name, rating, message, client_email } = req.body;
   
   try {
+    // Get client_id and driver_id
+    const clientResult = await req.db.query(
+      'SELECT client_id FROM Client WHERE email = $1',
+      [client_email]
+    );
+    
+    if (clientResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
+    
+    const clientId = clientResult.rows[0].client_id;
+    
+    const driverResult = await req.db.query(
+      'SELECT driver_id FROM Driver WHERE name = $1',
+      [driver_name]
+    );
+    
+    if (driverResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Driver not found' });
+    }
+    
+    const driverId = driverResult.rows[0].driver_id;
+    
     // Check if client has had a rent with this driver
     const rentCheck = await req.db.query(
       `SELECT 1 FROM Rent
-       WHERE client_email = $1 AND driver_name = $2`,
-      [client_email, driver_name]
+       WHERE client_id = $1 AND driver_id = $2`,
+      [clientId, driverId]
     );
     
     if (rentCheck.rows.length === 0) {
@@ -234,22 +277,12 @@ router.post('/reviews', async (req, res) => {
       });
     }
     
-    // Check if driver exists
-    const driverCheck = await req.db.query(
-      'SELECT 1 FROM Driver WHERE name = $1',
-      [driver_name]
-    );
-    
-    if (driverCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'Driver not found' });
-    }
-    
     // Create the review
     const result = await req.db.query(
-      `INSERT INTO Review (driver_name, rating, message, client_email)
+      `INSERT INTO Review (driver_id, client_id, rating, message)
        VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [driver_name, rating, message, client_email]
+      [driverId, clientId, rating, message]
     );
     
     res.status(201).json(result.rows[0]);
@@ -267,10 +300,9 @@ router.get('/:email/addresses', async (req, res) => {
     const result = await req.db.query(
       `SELECT a.road_name, a.number, a.city
        FROM Address a
-       JOIN ClientAddress ca ON a.road_name = ca.road_name 
-                             AND a.number = ca.number 
-                             AND a.city = ca.city
-       WHERE ca.client_email = $1`,
+       JOIN Client_Address ca ON a.address_id = ca.address_id
+       JOIN Client c ON ca.client_id = c.client_id
+       WHERE c.email = $1`,
       [email]
     );
     
@@ -289,10 +321,9 @@ router.get('/:email/credit-cards', async (req, res) => {
     const result = await req.db.query(
       `SELECT cc.card_number, a.road_name, a.number, a.city
        FROM CreditCard cc
-       JOIN Address a ON cc.address_road_name = a.road_name 
-                     AND cc.address_number = a.number 
-                     AND cc.address_city = a.city
-       WHERE cc.client_email = $1`,
+       JOIN Address a ON cc.payment_address_id = a.address_id
+       JOIN Client c ON cc.client_id = c.client_id
+       WHERE c.email = $1`,
       [email]
     );
     
