@@ -26,19 +26,19 @@ export default function LoginForm({ onSuccessRedirect }: LoginFormProps) {
     setError('');
 
     // Hardcoded driver for testing
-    if (userType === 'driver' && name === 'john') {
+    if (userType === 'manager') {
       // Create mock driver data
       const driverData = {
         name: 'John Smith',
-        userType: 'driver',
-        id: 12345
+        userType: 'manager',
+        ssn: 111111111
       };
 
       // Store in localStorage
       localStorage.setItem('user', JSON.stringify(driverData));
 
       // Redirect to driver dashboard
-      router.push('/driver/dashboard');
+      router.push('/manager/dashboard');
       return;
     }
 
