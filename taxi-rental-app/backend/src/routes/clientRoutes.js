@@ -103,9 +103,10 @@ router.get('/available-models', async (req, res) => {
   
   try {
     const result = await req.db.query(
-      `SELECT DISTINCT m.brand, m.car_id as carid, m.model_id as modelid, m.color, 
+      `SELECT DISTINCT c.brand, m.car_id as carid, m.model_id as modelid, m.color, 
               m.construction_year, m.transmission_type 
        FROM Model m 
+       JOIN Car c ON m.car_id = c.car_id
        WHERE EXISTS (
          SELECT 1 
          FROM Driver d 

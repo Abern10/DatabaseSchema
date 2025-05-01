@@ -9,7 +9,7 @@ const PORT = 5001;
 
 // Configure CORS with specific options
 const corsOptions = {
-  origin: ['http://localhost:3001', 'http://127.0.0.1:3001'], // Allow your frontend origins
+  origin: ['http://localhost:3001', 'http://127.0.0.1:3001'], // Allow frontend origins
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],       // Allowed methods
   allowedHeaders: ['Content-Type', 'Authorization'],          // Allowed headers
   credentials: true,                                          // Allow cookies
