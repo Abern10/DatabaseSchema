@@ -24,12 +24,10 @@ export default function DriverModels() {
   const [brands, setBrands] = useState<string[]>([]);
 
   useEffect(() => {
-    // In a real app, fetch this data from your API
     const fetchModels = async () => {
-      // Mock API call
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Mock data
+      // Mock data for testing
       const mockModels: CarModel[] = [
         {
           id: 1,
@@ -137,7 +135,7 @@ export default function DriverModels() {
 
   const handleRequestAccess = async (modelId: number) => {
     // In a real app, make an API call to request access
-    // Mock API call
+    // Mock API call for testing
     await new Promise(resolve => setTimeout(resolve, 500));
     
     alert(`Access request sent for model #${modelId}`);

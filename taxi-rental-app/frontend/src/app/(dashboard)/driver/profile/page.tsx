@@ -3,7 +3,7 @@
 
 import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { updateDriverAddress } from '@/lib/api';
+import { updateDriverAddress, updateDriverContact, getDriverProfile } from '@/lib/api';
 
 type Address = {
   road_name: string;
@@ -56,7 +56,7 @@ export default function DriverProfile() {
         }
 
         // Fetch driver profile from API
-        fetchDriverProfile(parsedUser.name)
+        getDriverProfile(parsedUser.name)
           .then(response => {
             if (response.success && response.data) {
               setProfile(response.data);
@@ -71,7 +71,7 @@ export default function DriverProfile() {
               throw new Error(response.error || 'Failed to load profile');
             }
           })
-          .catch(err => {
+          .catch((err: Error) => {
             console.error('Error fetching driver profile:', err);
             setError(err.message || 'Failed to load profile. Please try again later.');
           })
@@ -89,33 +89,6 @@ export default function DriverProfile() {
       setTimeout(() => router.push('/'), 2000);
     }
   }, [router]);
-
-  const fetchDriverProfile = async (driverName: string) => {
-    try {
-      // This endpoint would need to be added to the API
-      const response = await fetch(`/api/drivers/${driverName}/profile`);
-
-      if (!response.ok) {
-        throw new Error(`Error fetching profile: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      setProfile(data);
-
-      // Initialize form values with current data
-      setAddressForm(data.address);
-      setContactForm({
-        phone_number: data.phone_number,
-        email: data.email
-      });
-
-    } catch (err) {
-      console.error('Error fetching driver profile:', err);
-      setError('Failed to load profile. Please try again later.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleAddressSubmit = async (e: FormEvent) => {
     e.preventDefault();
