@@ -82,7 +82,7 @@ export default function ManagerReports() {
     
     try {
       // In a real app, make API calls to fetch the report data
-      // Mock API call with timeout
+      // Mock API call with timeout for testing
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Generate mock data based on the selected report

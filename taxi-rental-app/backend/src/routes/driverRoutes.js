@@ -242,10 +242,6 @@ router.get('/:name/profile', async (req, res) => {
     if (driverResult.rows.length === 0) {
       return res.status(404).json({ error: 'Driver not found' });
     }
-    
-    // Get additional contact info (simulated here - you would need to add these to your schema)
-    // In a real implementation, you would either add these columns to the Driver table
-    // or have a separate DriverContact table
     const driverData = driverResult.rows[0];
     
     // Build the response object
