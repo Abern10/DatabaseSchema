@@ -3,10 +3,14 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { getDriverModels, getDriverReviews } from '@/lib/api';
 
 export default function DriverDashboard() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [modelError, setModelError] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   type ScheduledRide = {
     id: number;
@@ -20,7 +24,8 @@ export default function DriverDashboard() {
   
   type CarModel = {
     brand: string;
-    model_id: number;
+    modelid: number;
+    carid: number;
     color: string;
     construction_year: number;
     transmission_type: string;
@@ -42,67 +47,68 @@ export default function DriverDashboard() {
     // Get user data from localStorage
     const userData = localStorage.getItem('user');
     if (userData) {
-      setUser(JSON.parse(userData));
+      const parsedUser = JSON.parse(userData);
+      setUser(parsedUser);
       
-      // In a real application, you would fetch this data from your API
-      // Simulating API calls with mock data
-      setTodaysRides([
-        {
-          id: 1,
-          date: '2025-04-30',
-          time: '09:30 AM',
-          client_name: 'Alice Johnson',
-          pickup_address: '123 Main St, New York',
-          car_info: 'Toyota Camry (Silver)',
-          status: 'Upcoming',
-        },
-        {
-          id: 2,
-          date: '2025-04-30',
-          time: '02:00 PM',
-          client_name: 'Bob Smith',
-          pickup_address: '456 Park Ave, New York',
-          car_info: 'Honda Accord (Blue)',
-          status: 'Upcoming',
-        },
-      ]);
-      
-      setMyModels([
-        {
-          brand: 'Toyota',
-          model_id: 1,
-          color: 'Silver',
-          construction_year: 2023,
-          transmission_type: 'automatic',
-        },
-        {
-          brand: 'Honda',
-          model_id: 2,
-          color: 'Blue',
-          construction_year: 2022,
-          transmission_type: 'manual',
-        },
-      ]);
-
-      setRecentReviews([
-        {
-          id: 1,
-          client_name: 'Alice Johnson',
-          rating: 5,
-          message: 'Excellent driver, very professional and punctual!',
-          date: '2025-04-28',
-        },
-        {
-          id: 2,
-          client_name: 'Bob Smith',
-          rating: 4,
-          message: 'Good service, pleasant conversation.',
-          date: '2025-04-25',
-        },
-      ]);
+      // Load user's data
+      loadDriverData(parsedUser.name);
+    } else {
+      setLoading(false);
+      setError("User not found. Please log in again.");
     }
-    setLoading(false);
   }, []);
+
+  const loadDriverData = async (driverName: string) => {
+    try {
+      setLoading(true);
+      
+      // Fetch driver's models
+      try {
+        const modelsResponse = await getDriverModels(driverName);
+        if (modelsResponse.success && modelsResponse.data && Array.isArray(modelsResponse.data)) {
+          setMyModels(modelsResponse.data);
+        } else {
+          setModelError('No models available for this driver.');
+          setMyModels([]);
+        }
+      } catch (err) {
+        console.error('Error loading driver models:', err);
+        setModelError('Could not load driver models. Please try again later.');
+        setMyModels([]);
+      }
+      
+      // Fetch driver's reviews
+      try {
+        const reviewsResponse = await getDriverReviews(driverName);
+        if (reviewsResponse.success && reviewsResponse.data && Array.isArray(reviewsResponse.data)) {
+          // Sort by date, most recent first, and take only most recent 2
+          const sortedReviews = [...reviewsResponse.data].sort((a, b) => 
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+          ).slice(0, 2);
+          
+          setRecentReviews(sortedReviews);
+        } else {
+          setReviewError('No reviews available for this driver.');
+          setRecentReviews([]);
+        }
+      } catch (err) {
+        console.error('Error loading driver reviews:', err);
+        setReviewError('Could not load driver reviews. Please try again later.');
+        setRecentReviews([]);
+      }
+      
+      // For scheduled rides, we would need an API endpoint to fetch the driver's schedule
+      // This would be implemented in the backend and then called here
+      // For now, we'll keep the array empty as we don't have that endpoint yet
+      setTodaysRides([]);
+      
+    } catch (err) {
+      console.error('Error loading dashboard data:', err);
+      setError('Failed to load dashboard data. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderStars = (rating: number) => {
     const stars = [];
@@ -116,12 +122,34 @@ export default function DriverDashboard() {
     return stars;
   };
 
+  const handleRetryModels = () => {
+    if (user?.name) {
+      setModelError(null);
+      loadDriverData(user.name);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-full">
         <div className="p-6 bg-white rounded-xl shadow-md">
           <div className="w-12 h-12 mx-auto mb-4 border-t-4 border-indigo-500 border-solid rounded-full animate-spin"></div>
           <p className="text-center text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white p-6 rounded-xl shadow-md">
+        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+          {error}
+        </div>
+        <div className="mt-4 text-center">
+          <Link href="/" className="text-indigo-600 hover:text-indigo-800 font-medium">
+            Return to Login
+          </Link>
         </div>
       </div>
     );
@@ -145,7 +173,7 @@ export default function DriverDashboard() {
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500">Total Rides</h3>
-            <p className="text-2xl font-bold text-gray-800">248</p>
+            <p className="text-2xl font-bold text-gray-800">{recentReviews.length || 0}</p>
           </div>
         </div>
       </div>
@@ -159,7 +187,7 @@ export default function DriverDashboard() {
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500">Today's Earnings</h3>
-            <p className="text-2xl font-bold text-gray-800">$145.50</p>
+            <p className="text-2xl font-bold text-gray-800">$0.00</p>
           </div>
         </div>
       </div>
@@ -174,8 +202,16 @@ export default function DriverDashboard() {
           <div>
             <h3 className="text-sm font-medium text-gray-500">Average Rating</h3>
             <div className="flex items-center">
-              <p className="text-2xl font-bold text-gray-800 mr-2">4.8</p>
-              <div className="flex text-sm">{renderStars(5)}</div>
+              <p className="text-2xl font-bold text-gray-800 mr-2">
+                {recentReviews.length > 0 
+                  ? (recentReviews.reduce((sum, rev) => sum + rev.rating, 0) / recentReviews.length).toFixed(1) 
+                  : '0.0'}
+              </p>
+              <div className="flex text-sm">
+                {renderStars(recentReviews.length > 0 
+                  ? Math.round(recentReviews.reduce((sum, rev) => sum + rev.rating, 0) / recentReviews.length) 
+                  : 0)}
+              </div>
             </div>
           </div>
         </div>
@@ -242,7 +278,17 @@ export default function DriverDashboard() {
           </Link>
         </div>
         
-        {recentReviews.length === 0 ? (
+        {reviewError ? (
+          <div className="bg-gray-50 rounded-lg p-6 text-center">
+            <p className="text-gray-500 mb-2">{reviewError}</p>
+            <button 
+              onClick={handleRetryModels}
+              className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+            >
+              Retry
+            </button>
+          </div>
+        ) : recentReviews.length === 0 ? (
           <div className="bg-gray-50 rounded-lg p-8 text-center">
             <p className="text-gray-500">No reviews yet.</p>
           </div>
@@ -272,18 +318,38 @@ export default function DriverDashboard() {
             View All Models
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {myModels.map((car, index) => (
-            <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all hover:border-indigo-300">
-              <h4 className="font-semibold text-gray-800">{car.brand}</h4>
-              <div className="text-sm text-gray-600 mt-1">
-                <p>Color: {car.color}</p>
-                <p>Year: {car.construction_year}</p>
-                <p>Transmission: {car.transmission_type}</p>
+        
+        {modelError ? (
+          <div className="bg-gray-50 rounded-lg p-6 text-center">
+            <p className="text-gray-500 mb-2">{modelError}</p>
+            <button 
+              onClick={handleRetryModels}
+              className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+            >
+              Retry
+            </button>
+          </div>
+        ) : myModels.length === 0 ? (
+          <div className="bg-gray-50 rounded-lg p-8 text-center">
+            <p className="text-gray-500">You haven't been assigned any car models yet.</p>
+            <Link href="/driver/models" className="mt-4 inline-block text-indigo-600 hover:text-indigo-800 font-medium">
+              Request Car Models
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {myModels.map((car, index) => (
+              <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all hover:border-indigo-300">
+                <h4 className="font-semibold text-gray-800">{car.brand}</h4>
+                <div className="text-sm text-gray-600 mt-1">
+                  <p>Color: {car.color}</p>
+                  <p>Year: {car.construction_year}</p>
+                  <p>Transmission: {car.transmission_type}</p>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
