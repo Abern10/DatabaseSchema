@@ -182,11 +182,19 @@ export default function ManagerReports() {
   };
 
   const generateMockProblematicDrivers = (): ProblematicDriver[] => {
-    return [
-      { name: 'Daniel Thompson', averageRating: 2.1, rentCount: 76, localClientCount: 45 },
-      { name: 'Robert Garcia', averageRating: 2.3, rentCount: 58, localClientCount: 37 },
-      { name: 'William Lee', averageRating: 2.4, rentCount: 62, localClientCount: 29 }
+    const clients: ProblematicDriver[] = [
+      { name: 'Alice Johnson', rentCount: 17, averageRating: 0.3, localClientCount: 16  },
+      { name: 'Bob Smith', rentCount: 12, averageRating: 0.5, localClientCount: 11  },
+      { name: 'Charlie Davis', rentCount: 7, averageRating: 0.6, localClientCount: 7  },
+      { name: 'Diana Wilson', rentCount: 5, averageRating: 0.9, localClientCount: 5  },
+      { name: 'Edward Brown', rentCount: 19, averageRating: 1.2, localClientCount: 17  },
+      { name: 'Fiona Miller', rentCount: 20, averageRating: 1.3, localClientCount: 17  },
+      { name: 'George Taylor', rentCount: 11, averageRating: 1.7, localClientCount: 9 },
+      { name: 'Hannah Martinez', rentCount: 3, averageRating: 2.0, localClientCount: 2  },
+      { name: 'Ian Robinson', rentCount: 14, averageRating: 2.4, localClientCount: 9 },
+      { name: 'Julia Garcia',  rentCount: 18, averageRating: 2.5, localClientCount: 10 }
     ];
+    return clients;
   };
 
   const generateMockBrandRatings = (): BrandRating[] => {
