@@ -2,6 +2,8 @@
 'use client';
 
 import { useState, useEffect, FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { updateDriverAddress } from '@/lib/api';
 
 type Address = {
   road_name: string;
@@ -23,6 +25,7 @@ type Driver = {
 };
 
 export default function DriverProfile() {
+  const router = useRouter();
   const [profile, setProfile] = useState<Driver | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingAddress, setEditingAddress] = useState(false);
@@ -40,61 +43,106 @@ export default function DriverProfile() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Mock data
-      const mockProfile: Driver = {
-        name: 'John Smith',
-        id: 12345,
-        address: {
-          road_name: 'Main Street',
-          number: 123,
-          city: 'New York'
-        },
-        license_number: 'DL-987654321',
-        license_expiry: '2026-08-15',
-        phone_number: '+1 (555) 123-4567',
-        email: 'john.smith@example.com',
-        joining_date: '2023-06-01',
-        total_rides: 248,
-        average_rating: 4.8
-      };
-      
-      setProfile(mockProfile);
-      setAddressForm(mockProfile.address);
-      setContactForm({
-        phone_number: mockProfile.phone_number,
-        email: mockProfile.email
-      });
+    // Get user data from localStorage
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+
+        if (parsedUser.userType !== 'driver') {
+          setError('Access denied. Only drivers can view this page.');
+          setTimeout(() => router.push('/'), 2000);
+          return;
+        }
+
+        // Fetch driver profile from API
+        fetchDriverProfile(parsedUser.name)
+          .then(response => {
+            if (response.success && response.data) {
+              setProfile(response.data);
+
+              // Initialize form values with current data
+              setAddressForm(response.data.address);
+              setContactForm({
+                phone_number: response.data.phone_number,
+                email: response.data.email
+              });
+            } else {
+              throw new Error(response.error || 'Failed to load profile');
+            }
+          })
+          .catch(err => {
+            console.error('Error fetching driver profile:', err);
+            setError(err.message || 'Failed to load profile. Please try again later.');
+          })
+          .finally(() => {
+            setLoading(false);
+          });
+      } catch (err) {
+        console.error('Error parsing user data:', err);
+        setError('Invalid user data. Please log in again.');
+        setTimeout(() => router.push('/'), 2000);
+      }
+    } else {
+      setError('User not found. Please log in again.');
       setLoading(false);
-    };
-    
-    fetchProfile();
-  }, []);
+      setTimeout(() => router.push('/'), 2000);
+    }
+  }, [router]);
+
+  const fetchDriverProfile = async (driverName: string) => {
+    try {
+      // This endpoint would need to be added to the API
+      const response = await fetch(`/api/drivers/${driverName}/profile`);
+
+      if (!response.ok) {
+        throw new Error(`Error fetching profile: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      setProfile(data);
+
+      // Initialize form values with current data
+      setAddressForm(data.address);
+      setContactForm({
+        phone_number: data.phone_number,
+        email: data.email
+      });
+
+    } catch (err) {
+      console.error('Error fetching driver profile:', err);
+      setError('Failed to load profile. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddressSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     setError('');
-    
+
     try {
-      // In a real app, make an API call to update the address
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Update local state
-      if (profile) {
+      if (!profile?.name) {
+        throw new Error('Driver name is missing');
+      }
+
+      // Call API to update address
+      const response = await updateDriverAddress(profile.name, addressForm);
+
+      if (response.success) {
+        // Update local state
         setProfile({
           ...profile,
           address: addressForm
         });
+
+        setEditingAddress(false);
+      } else {
+        throw new Error(response.error || 'Failed to update address');
       }
-      
-      setEditingAddress(false);
-    } catch (err) {
-      setError('Failed to update address. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to update address. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -104,24 +152,29 @@ export default function DriverProfile() {
     e.preventDefault();
     setSubmitting(true);
     setError('');
-    
+
     try {
-      // In a real app, make an API call to update the contact info
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Update local state
-      if (profile) {
+      if (!profile?.name) {
+        throw new Error('Driver name is missing');
+      }
+
+      // Call API to update contact information
+      const response = await updateDriverContact(profile.name, contactForm);
+
+      if (response.success) {
+        // Update local state
         setProfile({
           ...profile,
           phone_number: contactForm.phone_number,
           email: contactForm.email
         });
+
+        setEditingContact(false);
+      } else {
+        throw new Error(response.error || 'Failed to update contact information');
       }
-      
-      setEditingContact(false);
-    } catch (err) {
-      setError('Failed to update contact information. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to update contact information. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -134,6 +187,14 @@ export default function DriverProfile() {
           <div className="w-12 h-12 mx-auto mb-4 border-t-4 border-indigo-500 border-solid rounded-full animate-spin"></div>
           <p className="text-center text-gray-600">Loading...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (error && !profile) {
+    return (
+      <div className="text-center text-red-500 p-6 bg-white rounded-xl shadow-md">
+        {error}
       </div>
     );
   }
@@ -153,7 +214,7 @@ export default function DriverProfile() {
           {error}
         </div>
       )}
-      
+
       {/* Header */}
       <div className="bg-white rounded-xl shadow-md p-6">
         <div className="flex items-center">
@@ -162,11 +223,11 @@ export default function DriverProfile() {
           </div>
           <div className="ml-4">
             <h2 className="text-2xl font-semibold text-gray-800">{profile.name}</h2>
-            <p className="text-gray-600">Driver ID: {profile.id}</p>
+            <p className="text-xs text-gray-500">Driver ID: {profile.id}</p>
           </div>
         </div>
       </div>
-      
+
       {/* Driver Stats */}
       <div className="bg-white rounded-xl shadow-md p-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Driver Statistics</h3>
@@ -178,7 +239,7 @@ export default function DriverProfile() {
           <div className="bg-gray-50 p-4 rounded-lg">
             <p className="text-sm text-gray-500">Average Rating</p>
             <div className="flex items-center">
-              <p className="text-2xl font-bold text-gray-800 mr-2">{profile.average_rating}</p>
+              <p className="text-2xl font-bold text-gray-800 mr-2">{profile.average_rating.toFixed(1)}</p>
               <div className="text-yellow-500">★</div>
             </div>
           </div>
@@ -188,7 +249,7 @@ export default function DriverProfile() {
           </div>
         </div>
       </div>
-      
+
       {/* License Information */}
       <div className="bg-white rounded-xl shadow-md p-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">License Information</h3>
@@ -206,7 +267,7 @@ export default function DriverProfile() {
           </div>
         </div>
       </div>
-      
+
       {/* Address */}
       <div className="bg-white rounded-xl shadow-md p-6">
         <div className="flex justify-between items-start mb-4">
@@ -220,7 +281,7 @@ export default function DriverProfile() {
             </button>
           )}
         </div>
-        
+
         {editingAddress ? (
           <form onSubmit={handleAddressSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -264,7 +325,7 @@ export default function DriverProfile() {
                 />
               </div>
             </div>
-            
+
             <div className="flex justify-end space-x-2">
               <button
                 type="button"
@@ -293,7 +354,7 @@ export default function DriverProfile() {
           </div>
         )}
       </div>
-      
+
       {/* Contact Information */}
       <div className="bg-white rounded-xl shadow-md p-6">
         <div className="flex justify-between items-start mb-4">
@@ -307,7 +368,7 @@ export default function DriverProfile() {
             </button>
           )}
         </div>
-        
+
         {editingContact ? (
           <form onSubmit={handleContactSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -338,7 +399,7 @@ export default function DriverProfile() {
                 />
               </div>
             </div>
-            
+
             <div className="flex justify-end space-x-2">
               <button
                 type="button"
@@ -375,7 +436,7 @@ export default function DriverProfile() {
           </div>
         )}
       </div>
-      
+
       {/* Account Settings */}
       <div className="bg-white rounded-xl shadow-md p-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Account Settings</h3>

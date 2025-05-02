@@ -294,6 +294,66 @@ export async function submitReview(reviewData: {
   }
 }
 
+// Get driver profile
+export async function getDriverProfile(name: string): Promise<ApiResponse<any>> {
+  try {
+    const response = await fetch(`${API_URL}/drivers/${name}/profile`);
+    return handleResponse(response);
+  } catch (error) {
+    return {
+      success: false,
+      error: 'Network error, please try again later.',
+    };
+  }
+}
+
+// Update driver address
+export async function updateDriverAddress(name: string, address: {
+  road_name: string;
+  number: number;
+  city: string;
+}): Promise<ApiResponse<any>> {
+  try {
+    const response = await fetch(`${API_URL}/drivers/${name}/address`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(address),
+    });
+    
+    return handleResponse(response);
+  } catch (error) {
+    return {
+      success: false,
+      error: 'Network error, please try again later.',
+    };
+  }
+}
+
+// Update driver contact information
+export async function updateDriverContact(name: string, contactInfo: {
+  phone_number: string;
+  email: string;
+}): Promise<ApiResponse<any>> {
+  try {
+    const response = await fetch(`${API_URL}/drivers/${name}/contact`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(contactInfo),
+    });
+    
+    return handleResponse(response);
+  } catch (error) {
+    return {
+      success: false,
+      error: 'Network error, please try again later.',
+    };
+  }
+}
+
 // Get all reviews for a driver
 export async function getDriverReviews(driverName: string): Promise<ApiResponse<any>> {
   try {
@@ -370,26 +430,6 @@ export async function removeClientAddress(email: string, address: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(address),
-    });
-    
-    return handleResponse(response);
-  } catch (error) {
-    return {
-      success: false,
-      error: 'Network error, please try again later.',
-    };
-  }
-}
-
-// Update driver's address
-export async function updateDriverAddress(name: string, addressData: any): Promise<ApiResponse<any>> {
-  try {
-    const response = await fetch(`${API_URL}/drivers/${name}/address`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(addressData),
     });
     
     return handleResponse(response);

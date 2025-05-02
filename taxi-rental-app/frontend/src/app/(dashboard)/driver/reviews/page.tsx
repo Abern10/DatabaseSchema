@@ -2,6 +2,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { getDriverReviews } from '@/lib/api';
 
 type Review = {
   id: number;
@@ -23,128 +26,136 @@ type Stats = {
 };
 
 export default function DriverReviews() {
+  const router = useRouter();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<'date' | 'rating'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [filter, setFilter] = useState<number | null>(null);
+  const [error, setError] = useState('');
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    // In a real app, fetch this data from your API
-    const fetchReviews = async () => {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Mock data
-      const mockReviews: Review[] = [
-        {
-          id: 1,
-          client_name: 'Alice Johnson',
-          client_email: 'alice.johnson@example.com',
-          rating: 5,
-          message: 'Excellent driver, very professional and punctual!',
-          date: '2025-04-28',
-          ride_id: 120,
-          ride_date: '2025-04-28'
-        },
-        {
-          id: 2,
-          client_name: 'Bob Smith',
-          client_email: 'bob.smith@example.com',
-          rating: 4,
-          message: 'Good service, pleasant conversation.',
-          date: '2025-04-25',
-          ride_id: 115,
-          ride_date: '2025-04-25'
-        },
-        {
-          id: 3,
-          client_name: 'Emma Wilson',
-          client_email: 'emma.wilson@example.com',
-          rating: 5,
-          message: 'One of the best drivers I\'ve had! Very safe driving and friendly service.',
-          date: '2025-04-22',
-          ride_id: 112,
-          ride_date: '2025-04-22'
-        },
-        {
-          id: 4,
-          client_name: 'Michael Brown',
-          client_email: 'michael.brown@example.com',
-          rating: 3,
-          message: 'Decent service but was a bit late.',
-          date: '2025-04-20',
-          ride_id: 108,
-          ride_date: '2025-04-20'
-        },
-        {
-          id: 5,
-          client_name: 'Sophia Martinez',
-          client_email: 'sophia.martinez@example.com',
-          rating: 4,
-          message: 'Comfortable ride, driver was helpful with my luggage.',
-          date: '2025-04-18',
-          ride_id: 105,
-          ride_date: '2025-04-18'
-        },
-        {
-          id: 6,
-          client_name: 'James Davis',
-          client_email: 'james.davis@example.com',
-          rating: 5,
-          message: 'Perfect ride! Driver knew all the shortcuts and got me to my destination early.',
-          date: '2025-04-15',
-          ride_id: 100,
-          ride_date: '2025-04-15'
-        },
-        {
-          id: 7,
-          client_name: 'Olivia Taylor',
-          client_email: 'olivia.taylor@example.com',
-          rating: 4,
-          message: 'Good driver, no complaints.',
-          date: '2025-04-10',
-          ride_id: 95,
-          ride_date: '2025-04-10'
+    // Get user data from localStorage
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        
+        if (parsedUser.userType !== 'driver') {
+          setError('Access denied. Only drivers can view this page.');
+          setTimeout(() => router.push('/'), 2000);
+          return;
         }
-      ];
-      
-      // Calculate stats
-      const totalReviews = mockReviews.length;
-      const totalRating = mockReviews.reduce((sum, review) => sum + review.rating, 0);
-      const averageRating = totalRating / totalReviews;
-      
-      // Count ratings distribution
-      const distribution: { [key: number]: number } = {
-        1: 0,
-        2: 0,
-        3: 0,
-        4: 0,
-        5: 0
-      };
-      
-      mockReviews.forEach(review => {
-        distribution[review.rating]++;
-      });
-      
-      setReviews(mockReviews);
-      setStats({
-        average_rating: averageRating,
-        total_reviews: totalReviews,
-        rating_distribution: distribution
-      });
-      
+        
+        setUser(parsedUser);
+        
+        // Fetch driver reviews
+        getDriverReviews(parsedUser.name)
+          .then(response => {
+            if (response.success && response.data) {
+              setReviews(response.data);
+              calculateStats(response.data);
+            } else {
+              throw new Error(response.error || 'Failed to fetch reviews');
+            }
+          })
+          .catch(err => {
+            console.error('Error fetching driver reviews:', err);
+            setError(err.message || 'Failed to load reviews. Please try again later.');
+            setReviews([]);
+          })
+          .finally(() => {
+            setLoading(false);
+          });
+      } catch (err) {
+        console.error('Error parsing user data:', err);
+        setError('Invalid user data. Please log in again.');
+        setTimeout(() => router.push('/'), 2000);
+      }
+    } else {
+      setError('User not found. Please log in again.');
       setLoading(false);
+      setTimeout(() => router.push('/'), 2000);
+    }
+  }, [router]);
+
+  const fetchDriverReviews = async (driverName: string) => {
+    try {
+      const response = await getDriverReviews(driverName);
+
+      if (response.success && response.data) {
+        const reviewData = response.data;
+        setReviews(reviewData);
+
+        // Calculate stats from the review data
+        calculateStats(reviewData);
+      } else {
+        throw new Error(response.error || 'Failed to fetch reviews');
+      }
+    } catch (err: any) {
+      console.error('Error fetching driver reviews:', err);
+      setError(err.message || 'Failed to load reviews. Please try again later.');
+      setReviews([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calculateStats = (reviewData: Review[]) => {
+    if (!reviewData.length) {
+      setStats({
+        average_rating: 0,
+        total_reviews: 0,
+        rating_distribution: {
+          1: 0,
+          2: 0,
+          3: 0,
+          4: 0,
+          5: 0
+        }
+      });
+      return;
+    }
+
+    const totalReviews = reviewData.length;
+    const totalRating = reviewData.reduce((sum, review) => sum + review.rating, 0);
+    const averageRating = totalRating / totalReviews;
+
+    // Count ratings distribution
+    const distribution: { [key: number]: number } = {
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+      5: 0
     };
-    
-    fetchReviews();
-  }, []);
+
+    reviewData.forEach(review => {
+      distribution[review.rating]++;
+    });
+
+    setStats({
+      average_rating: averageRating,
+      total_reviews: totalReviews,
+      rating_distribution: distribution
+    });
+  };
 
   // Sort and filter reviews
-  const displayedReviews = [...reviews]
-    .filter(review => filter === null || review.rating === filter)
-    .sort((a, b) => {
+  const getDisplayedReviews = () => {
+    if (!reviews.length) return [];
+
+    let filtered = [...reviews];
+
+    // Apply rating filter
+    if (filter !== null) {
+      filtered = filtered.filter(review => review.rating === filter);
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
       if (sortBy === 'date') {
         return sortOrder === 'asc'
           ? new Date(a.date).getTime() - new Date(b.date).getTime()
@@ -155,6 +166,11 @@ export default function DriverReviews() {
           : b.rating - a.rating;
       }
     });
+
+    return filtered;
+  };
+
+  const displayedReviews = getDisplayedReviews();
 
   const renderStars = (rating: number) => {
     const stars = [];
@@ -177,6 +193,13 @@ export default function DriverReviews() {
     }
   };
 
+  const handleRefresh = () => {
+    if (user?.name) {
+      setLoading(true);
+      fetchDriverReviews(user.name);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-full">
@@ -188,36 +211,67 @@ export default function DriverReviews() {
     );
   }
 
+  if (error && !stats) {
+    return (
+      <div className="text-center text-red-500 p-6 bg-white rounded-xl shadow-md">
+        {error}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg mb-4">
+          {error}
+          <button
+            onClick={handleRefresh}
+            className="ml-2 text-red-700 underline hover:text-red-900"
+          >
+            Try Again
+          </button>
+        </div>
+      )}
+
       {/* Stats Overview */}
       <div className="bg-white p-6 rounded-xl shadow-md">
-        <h2 className="text-xl font-semibold mb-6 text-gray-800">My Reviews</h2>
-        
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold mb-0 text-gray-800">My Reviews</h2>
+          <button
+            onClick={handleRefresh}
+            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+            aria-label="Refresh"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Column - Average Rating */}
           <div className="bg-gray-50 p-6 rounded-lg">
             <h3 className="text-lg font-medium text-gray-700 mb-2">Average Rating</h3>
             <div className="flex items-end">
               <span className="text-4xl font-bold text-indigo-600">
-                {stats?.average_rating.toFixed(1)}
+                {stats?.average_rating.toFixed(1) || '0.0'}
               </span>
               <div className="ml-3 text-xl mb-1 text-yellow-500">
                 {renderStars(Math.round(stats?.average_rating || 0))}
               </div>
             </div>
             <p className="text-sm text-gray-500 mt-1">
-              Based on {stats?.total_reviews} reviews
+              Based on {stats?.total_reviews || 0} reviews
             </p>
           </div>
-          
+
           {/* Right Column - Rating Distribution */}
           <div>
             <h3 className="text-lg font-medium text-gray-700 mb-3">Rating Distribution</h3>
             {stats && [5, 4, 3, 2, 1].map(rating => {
               const count = stats.rating_distribution[rating] || 0;
-              const percentage = Math.round((count / stats.total_reviews) * 100) || 0;
-              
+              const percentage = stats.total_reviews ? Math.round((count / stats.total_reviews) * 100) : 0;
+
               return (
                 <div key={rating} className="flex items-center mb-2">
                   <div className="flex items-center w-16">
@@ -227,8 +281,8 @@ export default function DriverReviews() {
                     <span className="text-yellow-500">★</span>
                   </div>
                   <div className="flex-1 h-4 mx-2 bg-gray-200 rounded">
-                    <div 
-                      className="h-4 bg-indigo-600 rounded" 
+                    <div
+                      className="h-4 bg-indigo-600 rounded"
                       style={{ width: `${percentage}%` }}
                     ></div>
                   </div>
@@ -241,7 +295,7 @@ export default function DriverReviews() {
           </div>
         </div>
       </div>
-      
+
       {/* Filters */}
       <div className="bg-white p-6 rounded-xl shadow-md">
         <div className="flex flex-wrap justify-between items-center gap-4">
@@ -265,7 +319,7 @@ export default function DriverReviews() {
               ))}
             </div>
           </div>
-          
+
           <div className="flex items-center">
             <span className="text-sm font-medium text-gray-700 mr-3">Sort by:</span>
             <div className="flex border border-gray-300 rounded-md overflow-hidden">
@@ -295,18 +349,24 @@ export default function DriverReviews() {
           </div>
         </div>
       </div>
-      
+
       {/* Reviews List */}
       <div className="bg-white p-6 rounded-xl shadow-md">
         {displayedReviews.length === 0 ? (
           <div className="bg-gray-50 rounded-lg p-8 text-center">
-            <p className="text-gray-500">No reviews found matching your filters.</p>
-            <button
-              onClick={() => setFilter(null)}
-              className="mt-4 text-indigo-600 hover:text-indigo-800 font-medium"
-            >
-              Clear filters
-            </button>
+            <p className="text-gray-500">
+              {filter !== null
+                ? 'No reviews found matching your filter.'
+                : 'No reviews found. Clients will rate your service after completed rides.'}
+            </p>
+            {filter !== null && (
+              <button
+                onClick={() => setFilter(null)}
+                className="mt-4 text-indigo-600 hover:text-indigo-800 font-medium"
+              >
+                Clear filters
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-6">
@@ -315,7 +375,7 @@ export default function DriverReviews() {
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-semibold text-gray-800">{review.client_name}</h3>
-                    <p className="text-xs text-gray-500">Reviewed on {review.date}</p>
+                    <p className="text-xs text-gray-500">Reviewed on {new Date(review.date).toLocaleDateString()}</p>
                   </div>
                   <div className="flex text-lg">
                     {renderStars(review.rating)}
@@ -323,7 +383,7 @@ export default function DriverReviews() {
                 </div>
                 <p className="mt-3 text-gray-700">{review.message}</p>
                 <div className="mt-3 text-xs text-gray-500">
-                  For ride #{review.ride_id} on {review.ride_date}
+                  For ride #{review.ride_id} on {new Date(review.ride_date).toLocaleDateString()}
                 </div>
               </div>
             ))}
